@@ -32,7 +32,7 @@ def generate_launch_description():
                         'autorepeat_rate': 20.0,
                     }]),
                 ComposableNode(
-                    package='main_arm_controller',
+                    package='catch23_robot_controller',
                     plugin='arm_controller::ArmControllerNode',
                     name='main_arm_controller_component'),
             ],
