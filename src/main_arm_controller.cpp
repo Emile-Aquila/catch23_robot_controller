@@ -17,18 +17,17 @@
 
 using namespace std::chrono_literals;
 using kondo_msg = kondo_drivers::msg::B3mServoMsg;
-using actuator_msg = actuator_msgs::msg::ActuatorMsg;
 
 
 namespace arm_controller{
 
     ArmControllerNode::ArmControllerNode(const rclcpp::NodeOptions & options)
     : Node("main_arm_controller_component", options) {
-        uint8_t servo_id = 1;
+        uint8_t servo_id = 0;
         auto joy_callback = [this, servo_id](const sensor_msgs::msg::Joy &msg) -> void {
             auto list_axes = msg.axes;
             std::vector<int> button_inputs = msg.buttons;  // target
-            float stick_input = list_axes[0] * 0.2;  // target duty
+            float stick_input = list_axes[2] * 0.2;  // target duty
 
             RCLCPP_INFO(this->get_logger(), "stick input: %lf", stick_input);
             std::for_each(button_inputs.begin(), button_inputs.begin()+2,[this](auto tmp){
@@ -41,11 +40,13 @@ namespace arm_controller{
             target_data.device.device_num = 0;
             target_data.target_value = stick_input;
             _pub_micro_ros->publish(target_data);
-
             if(button_inputs[0] == 1){
-                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, 100.0f, 500));
+                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, 66.5f, 500));
             }else if(button_inputs[1] == 1){
                 _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, 0.0f, 500));
+            }else if(button_inputs[2] == 1){
+                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, -66.5f, 500));
+
             }
         };
 
