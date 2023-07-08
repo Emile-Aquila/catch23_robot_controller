@@ -35,18 +35,33 @@ namespace arm_controller{
             });
 
             actuator_msg target_data;
+            // MCMD4
             target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_MCMD4;
             target_data.device.node_id = 2;
             target_data.device.device_num = 0;
             target_data.target_value = stick_input;
             _pub_micro_ros->publish(target_data);
+
+            // AIR
+            target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_AIR;
+            target_data.device.node_id = 2;
+            target_data.device.device_num = 0;
+            target_data.target_value = 0.0;
+            if(button_inputs[0] == 6) {
+                target_data.air_target = true;
+                _pub_micro_ros->publish(target_data);
+            }else if(button_inputs[0] == 8){
+                target_data.air_target = false;
+                _pub_micro_ros->publish(target_data);
+            }
+
+            // B3M
             if(button_inputs[0] == 1){
                 _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, 66.5f, 500));
             }else if(button_inputs[1] == 1){
                 _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, 0.0f, 500));
             }else if(button_inputs[2] == 1){
                 _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, -66.5f, 500));
-
             }
         };
 
