@@ -28,19 +28,32 @@ namespace arm_controller{
             auto list_axes = msg.axes;
             std::vector<int> button_inputs = msg.buttons;  // target
             float stick_input = list_axes[2] * 0.2;  // target duty
+            float stick_input2 = list_axes[3] * 18.0;
 
             RCLCPP_INFO(this->get_logger(), "stick input: %lf", stick_input);
+            RCLCPP_INFO(this->get_logger(), "stick input2: %lf", stick_input2);
+//            std::for_each(list_axes.begin(), list_axes.end(),[this](auto tmp){
+//                RCLCPP_INFO(this->get_logger(), "list axes: %f", tmp);
+//            });
+
             std::for_each(button_inputs.begin(), button_inputs.begin()+2,[this](auto tmp){
-                RCLCPP_INFO(this->get_logger(), "stick input: %d", tmp);
+                RCLCPP_INFO(this->get_logger(), "button input: %d", tmp);
             });
 
             actuator_msg target_data;
             // MCMD4
-            target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_MCMD4;
-            target_data.device.node_id = 2;
+            target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_MCMD3;
+            target_data.device.node_id = 1;
             target_data.device.device_num = 0;
             target_data.target_value = stick_input;
             _pub_micro_ros->publish(target_data);
+
+            target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_C620;
+            target_data.device.node_id = 0;
+            target_data.device.device_num = 1;
+            target_data.target_value = stick_input2;
+            _pub_micro_ros->publish(target_data);
+
 
             // AIR
             target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_AIR;
