@@ -28,7 +28,7 @@ namespace arm_controller{
             auto list_axes = msg.axes;
             std::vector<int> button_inputs = msg.buttons;  // target
             float stick_input = list_axes[2] * 0.2;  // target duty
-            float stick_input2 = list_axes[3] * 18.0;
+            float stick_input2 = list_axes[3] * 432.0;
 
             RCLCPP_INFO(this->get_logger(), "stick input: %lf", stick_input);
             RCLCPP_INFO(this->get_logger(), "stick input2: %lf", stick_input2);

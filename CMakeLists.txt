@@ -42,6 +42,12 @@ rclcpp_components_register_nodes(main_arm_controller_component "arm_controller::
 target_link_libraries(main_arm_controller_component "${cpp_typesupport_target}")
 
 
+ament_auto_add_library(c620_test SHARED src/c620_test.cpp)
+rclcpp_components_register_nodes(c620_test "arm_controller::C620Test")
+#rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
+target_link_libraries(c620_test "${cpp_typesupport_target}")
+
+
 
 # package setting
 ament_auto_package(
