@@ -18,63 +18,62 @@
 using namespace std::chrono_literals;
 using kondo_msg = kondo_drivers::msg::B3mServoMsg;
 
+float clip_f(float value, float min_v, float max_v){
+    return std::min(max_v, std::max(min_v, value));
+}
 
 namespace arm_controller{
-
     ArmControllerNode::ArmControllerNode(const rclcpp::NodeOptions & options)
     : Node("main_arm_controller_component", options) {
-        uint8_t servo_id = 0;
-        auto joy_callback = [this, servo_id](const sensor_msgs::msg::Joy &msg) -> void {
-            auto list_axes = msg.axes;
-            std::vector<int> button_inputs = msg.buttons;  // target
-            float stick_input = list_axes[2] * 0.2;  // target duty
-            float stick_input2 = list_axes[3] * 432.0;
+        uint8_t wrist_servo_id = 0;
+        uint8_t ikko_servo_id = 1;
+        tgt_r = 0.0f;
+        tgt_theta = 0.0f;
+        tgt_z = 0.0f;
 
-            RCLCPP_INFO(this->get_logger(), "stick input: %lf", stick_input);
-            RCLCPP_INFO(this->get_logger(), "stick input2: %lf", stick_input2);
-//            std::for_each(list_axes.begin(), list_axes.end(),[this](auto tmp){
-//                RCLCPP_INFO(this->get_logger(), "list axes: %f", tmp);
-//            });
+        auto joy_callback = [this, wrist_servo_id, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
+            auto list_axes = msg.axes;  // -1 ~ 1
+            std::vector<int> button_inputs = msg.buttons;  // 0 or 1
+            // buttonは0-indexになってる
+            // axes[0]: left | lr
+            // axes[1]: left | ud
+            // axes[3]: right | lr
+            // axes[4]: right | ud
+
+            float delta_theta = list_axes[0];
+            float delta_r = list_axes[1];
+            float delta_hand = list_axes[3];  // 手首のサーボ
+            float delta_z = list_axes[4];
+
+            tgt_z = tgt_z + delta_z;
+            tgt_theta = tgt_theta + delta_theta;
+            tgt_r = tgt_r + delta_r;
+            tgt_hand = tgt_hand + delta_hand;
+            RCLCPP_INFO(this->get_logger(), "target theta: %lf", delta_theta);
+            RCLCPP_INFO(this->get_logger(), "target r: %lf", delta_r);
+            RCLCPP_INFO(this->get_logger(), "target z: %lf", delta_z);
 
             std::for_each(button_inputs.begin(), button_inputs.begin()+2,[this](auto tmp){
                 RCLCPP_INFO(this->get_logger(), "button input: %d", tmp);
             });
 
-            actuator_msg target_data;
-            // MCMD4
-            target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_MCMD3;
-            target_data.device.node_id = 1;
-            target_data.device.device_num = 0;
-            target_data.target_value = stick_input;
-            _pub_micro_ros->publish(target_data);
-
-            target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_C620;
-            target_data.device.node_id = 0;
-            target_data.device.device_num = 1;
-            target_data.target_value = stick_input2;
-            _pub_micro_ros->publish(target_data);
-
-
-            // AIR
-            target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_AIR;
-            target_data.device.node_id = 2;
-            target_data.device.device_num = 0;
-            target_data.target_value = 0.0;
+            actuator_request_target(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, tgt_z);
+            actuator_request_target(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, tgt_theta);
+            actuator_request_target(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, tgt_r);
             if(button_inputs[0] == 6) {
-                target_data.air_target = true;
-                _pub_micro_ros->publish(target_data);
+                actuator_request_target(actuator_msgs::msg::NodeType::NODE_AIR, 2, 0, true);
             }else if(button_inputs[0] == 8){
-                target_data.air_target = false;
-                _pub_micro_ros->publish(target_data);
+                actuator_request_target(actuator_msgs::msg::NodeType::NODE_AIR, 2, 0, false);
             }
 
             // B3M
+            _pub_kondo->publish(this->_gen_b3m_set_pos_msg(wrist_servo_id, tgt_hand, 0));
             if(button_inputs[0] == 1){
-                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, 66.5f, 500));
+                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(ikko_servo_id, 66.5f, 500));
             }else if(button_inputs[1] == 1){
-                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, 0.0f, 500));
+                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(ikko_servo_id, 0.0f, 500));
             }else if(button_inputs[2] == 1){
-                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(servo_id, -66.5f, 500));
+                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(ikko_servo_id, -66.5f, 500));
             }
         };
 
@@ -85,13 +84,32 @@ namespace arm_controller{
         timer_ = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::timer_callback, this));
 
         rclcpp::sleep_for(1000ms);
-        _b3m_init(servo_id);  // init b3m
+        _b3m_init(wrist_servo_id);  // init b3m
+        _b3m_init(ikko_servo_id);  // init b3m
     }
 
     ArmControllerNode::~ArmControllerNode(){}
 
     void ArmControllerNode::timer_callback() {
         using namespace std::chrono_literals;
+    }
+
+    void ArmControllerNode::actuator_request_target(uint8_t node_type, uint8_t node_id, uint8_t device_id, float target_value){
+        actuator_msg target_data;
+        target_data.device.node_type.node_type = node_type;
+        target_data.device.node_id = node_id;
+        target_data.device.device_num = device_id;
+        target_data.target_value = target_value;
+        _pub_micro_ros->publish(target_data);
+    }
+
+    void ArmControllerNode::actuator_request_target(uint8_t node_type, uint8_t node_id, uint8_t device_id, bool air_target){
+        actuator_msg target_data;
+        target_data.device.node_type.node_type = node_type;
+        target_data.device.node_id = node_id;
+        target_data.device.device_num = device_id;
+        target_data.air_target = air_target;
+        _pub_micro_ros->publish(target_data);
     }
 
     kondo_msg ArmControllerNode::_gen_b3m_set_pos_msg(uint8_t servo_id, float target_pos, uint16_t move_time) {

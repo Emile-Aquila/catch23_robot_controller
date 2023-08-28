@@ -29,9 +29,12 @@ namespace arm_controller{
         using actuator_msg = actuator_msgs::msg::ActuatorMsg;
 
         void timer_callback();
+        void actuator_request_target(uint8_t node_type, uint8_t node_id, uint8_t device_id, float target_value);
+        void actuator_request_target(uint8_t node_type, uint8_t node_id, uint8_t device_id, bool air_target);
         kondo_msg _gen_b3m_set_pos_msg(uint8_t servo_id, float target_pos, uint16_t move_time=0);
         kondo_msg _gen_b3m_write_msg(uint8_t servo_id, uint8_t TxData, uint8_t address);
 
+        float tgt_theta, tgt_r, tgt_z, tgt_hand;
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;

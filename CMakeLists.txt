@@ -53,5 +53,5 @@ target_link_libraries(c620_test "${cpp_typesupport_target}")
 ament_auto_package(
         INSTALL_TO_SHARE
         launch
-#        params
+        params
 )
