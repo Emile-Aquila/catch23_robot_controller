@@ -44,8 +44,12 @@ namespace arm_controller{
             auto [d_phi, d_z] = joy_state.get_joystick_right_xy();
             request_arm_state = request_arm_state + ArmState(d_r * 10.0f, d_theta * 0.05f, d_z, d_phi);
             clip_arm_state(request_arm_state);
-            RCLCPP_INFO(this->get_logger(), "theta, r, z, phi: %lf, %lf, %lf, %lf",
+            tip_state_tgt = arm_fk(request_arm_state);
+
+            RCLCPP_INFO(this->get_logger(), "r,theta,z,phi: %lf, %lf, %lf, %lf",
                         request_arm_state.r, request_arm_state.theta, request_arm_state.z, request_arm_state.phi);
+            RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %lf, %lf, %lf, %lf",
+                        tip_state_tgt.x, tip_state_tgt.y, tip_state_tgt.z, tip_state_tgt.theta);
             _send_request_arm_state(request_arm_state);
 
             if(joy_state.get_button_1_indexed(6)) {
@@ -62,6 +66,23 @@ namespace arm_controller{
             }else if(joy_state.get_button_1_indexed(3)){
                 _pub_kondo->publish(this->_gen_b3m_set_pos_msg(ikko_servo_id, -66.5f, 500));
             }
+        };
+
+        auto joy_callback2 = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
+            JoyStickState joy_state(msg);
+
+            auto [d_x, d_y] = joy_state.get_joystick_left_xy();
+            auto [d_theta, d_z] = joy_state.get_joystick_right_xy();
+            tip_state_tgt = tip_state_tgt + TipState(d_x * 2.0f, d_y * 2.0f, d_z, d_theta);
+            request_arm_state = arm_ik(tip_state_tgt);
+            clip_arm_state(request_arm_state);
+            tip_state_tgt = arm_fk(request_arm_state);
+
+            RCLCPP_INFO(this->get_logger(), "r,theta,z,phi: %lf, %lf, %lf, %lf",
+                        request_arm_state.r, request_arm_state.theta, request_arm_state.z, request_arm_state.phi);
+            RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %lf, %lf, %lf, %lf",
+                        tip_state_tgt.x, tip_state_tgt.y, tip_state_tgt.z, tip_state_tgt.theta);
+            _send_request_arm_state(request_arm_state);
         };
 
         joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 5, joy_callback); // joyのtopicを受け取る
@@ -127,7 +148,7 @@ namespace arm_controller{
         _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, req_arm_state.z));
         _pub_micro_ros_theta->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, req_arm_state.theta));
         _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, req_arm_state.r));
-        _pub_kondo->publish(this->_gen_b3m_set_pos_msg(wrist_servo_id, req_arm_state.phi, 0));
+        _pub_kondo->publish(_gen_b3m_set_pos_msg(wrist_servo_id, req_arm_state.phi, 0));
     }
 }
 

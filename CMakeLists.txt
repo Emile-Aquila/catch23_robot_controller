@@ -36,7 +36,7 @@ endif()
 
 
 ## Component Settings
-ament_auto_add_library(main_arm_controller_component SHARED src/main_arm_controller.cpp src/joystick_state.cpp)
+ament_auto_add_library(main_arm_controller_component SHARED src/main_arm_controller.cpp src/joystick_state.cpp src/robot_state.cpp)
 rclcpp_components_register_nodes(main_arm_controller_component "arm_controller::ArmControllerNode")
 #rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 target_link_libraries(main_arm_controller_component "${cpp_typesupport_target}")
