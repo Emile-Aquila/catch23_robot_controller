@@ -14,6 +14,7 @@
 #include <actuator_msgs/msg/actuator_msg.hpp>
 #include <actuator_msgs/msg/device_info.hpp>
 #include <rclcpp/qos.hpp>
+#include <main_arm_controller/joystick_state.hpp>
 
 using namespace std::chrono_literals;
 using kondo_msg = kondo_drivers::msg::B3mServoMsg;
@@ -22,39 +23,31 @@ float clip_f(float value, float min_v, float max_v){
     return std::min(max_v, std::max(min_v, value));
 }
 
+void clip_arm_state(ArmState& arm_state){
+    arm_state.r = clip_f(arm_state.r, -300.0f, 0.0f);
+    arm_state.theta = clip_f(arm_state.theta, -M_PI/3.0f, M_PI/3.0f);
+    arm_state.z = clip_f(arm_state.z, 0.0f, 0.0f);  // TODO: 実装
+    arm_state.phi = clip_f(arm_state.phi, 0.0f, 0.0f);  // TODO: 実装
+}
+
+
 namespace arm_controller{
     ArmControllerNode::ArmControllerNode(const rclcpp::NodeOptions & options)
     : Node("main_arm_controller_component", options) {
-        uint8_t wrist_servo_id = 0;
         uint8_t ikko_servo_id = 1;
-        tgt_r = 0.0f;
-        tgt_theta = 0.0f;
-        tgt_z = 0.0f;
+        uint8_t wrist_servo_id = 0;  // TODO: rosparam化
 
-        auto joy_callback = [this, wrist_servo_id, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
+        auto joy_callback = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
             JoyStickState joy_state(msg);
-            // buttonは0-indexになってる
-            // axes[0]: left | lr
-            // axes[1]: left | ud
-            // axes[3]: right | lr
-            // axes[4]: right | ud
 
-            float delta_theta = joy_state.get_joystick_left_xy().first *0.05f;
-            float delta_r = joy_state.get_joystick_left_xy().second *10.0f;
-            float delta_hand = joy_state.get_joystick_right_xy().first;
-            float delta_z = joy_state.get_joystick_right_xy().second;
+            auto [d_theta, d_r] = joy_state.get_joystick_left_xy();
+            auto [d_phi, d_z] = joy_state.get_joystick_right_xy();
+            request_arm_state = request_arm_state + ArmState(d_r * 10.0f, d_theta * 0.05f, d_z, d_phi);
+            clip_arm_state(request_arm_state);
+            RCLCPP_INFO(this->get_logger(), "theta, r, z, phi: %lf, %lf, %lf, %lf",
+                        request_arm_state.r, request_arm_state.theta, request_arm_state.z, request_arm_state.phi);
+            _send_request_arm_state(request_arm_state);
 
-
-            tgt_z = tgt_z + delta_z;
-            tgt_theta = clip_f(tgt_theta + delta_theta, -M_PI/3.0f, 0.0f);
-            tgt_r = clip_f(tgt_r + delta_r, -200.0f, 0.0f);
-            tgt_hand = tgt_hand + delta_hand;
-            RCLCPP_INFO(this->get_logger(), "theta, r, z: %lf, %lf, %lf", tgt_theta, tgt_r, tgt_z);
-
-
-            _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, tgt_z));
-            _pub_micro_ros_theta->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, tgt_theta));
-            _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, tgt_r));
             if(joy_state.get_button_1_indexed(6)) {
                 _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 2, 0, true));
             }else if(joy_state.get_button_1_indexed(8)){
@@ -62,7 +55,6 @@ namespace arm_controller{
             }
 
             // B3M
-            _pub_kondo->publish(this->_gen_b3m_set_pos_msg(wrist_servo_id, tgt_hand, 0));
             if(joy_state.get_button_1_indexed(1)){
                 _pub_kondo->publish(this->_gen_b3m_set_pos_msg(ikko_servo_id, 66.5f, 500));
             }else if(joy_state.get_button_1_indexed(2)){
@@ -128,6 +120,14 @@ namespace arm_controller{
         rclcpp::sleep_for(100ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x28)); // 動作モードをNormalに
         rclcpp::sleep_for(100ms);
+    }
+
+    void ArmControllerNode::_send_request_arm_state(const ArmState &req_arm_state) {
+        uint8_t wrist_servo_id = 0;  // TODO: rosparam化
+        _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, req_arm_state.z));
+        _pub_micro_ros_theta->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, req_arm_state.theta));
+        _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, req_arm_state.r));
+        _pub_kondo->publish(this->_gen_b3m_set_pos_msg(wrist_servo_id, req_arm_state.phi, 0));
     }
 }
 
