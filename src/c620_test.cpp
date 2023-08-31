@@ -55,17 +55,17 @@ namespace arm_controller{
 
         target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_C620;
         target_data.device.node_id = 0;
-        target_data.device.device_num = 1;
+        target_data.device.device_num = 2;
         if(flag_r){
-            target_data.target_value = 3.141592f * 2.0f;
+            target_data.target_value = 100.0f;
         }else{
             target_data.target_value = 0.0f;
         }
         _pub_micro_ros_r->publish(target_data);
 
-        target_data.device.device_num = 2;
+        target_data.device.device_num = 1;
         if(flag_theta){
-            target_data.target_value = 100.0f;
+            target_data.target_value = 3.141592f * 2.0f;
         }else{
             target_data.target_value = 0.0f;
         }
