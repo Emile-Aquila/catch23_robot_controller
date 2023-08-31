@@ -31,9 +31,12 @@ namespace arm_controller{
         void timer_callback();
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::TimerBase::SharedPtr timer_;
-        rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
-        bool flag = false;
-        bool flag_pre = false;
+        rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros, _pub_micro_ros_r, _pub_micro_ros_theta;
+        bool flag_r = false;
+        bool flag_r_pre = false;
+
+        bool flag_theta = false;
+        bool flag_theta_pre = false;
     };
 }
 

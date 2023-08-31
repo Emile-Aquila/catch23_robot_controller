@@ -25,34 +25,28 @@ namespace arm_controller{
         auto joy_callback = [this](const sensor_msgs::msg::Joy &msg) -> void {
             auto list_axes = msg.axes;
             std::vector<int> button_inputs = msg.buttons;  // target
+
             if(button_inputs[0]){
-                if(!flag_pre){
-                    flag = (flag+1)%2;
+                if(!flag_r_pre){
+                    flag_r = (flag_r+1)%2;
                 }
             }
-            flag_pre = button_inputs[0];
-//            float stick_input = list_axes[2] * 0.2;  // target duty
-//            float stick_input2 = list_axes[3] * 432.0;
-//
-//            RCLCPP_INFO(this->get_logger(), "stick input: %lf", stick_input);
-//            RCLCPP_INFO(this->get_logger(), "stick input2: %lf", stick_input2);
-//
-//            std::for_each(button_inputs.begin(), button_inputs.begin()+2,[this](auto tmp){
-//                RCLCPP_INFO(this->get_logger(), "button input: %d", tmp);
-//            });
-//
-//            actuator_msg target_data;
-//
-//            target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_C620;
-//            target_data.device.node_id = 0;
-//            target_data.device.device_num = 1;
-//            target_data.target_value = stick_input2;
-//            _pub_micro_ros->publish(target_data);
+            flag_r_pre = button_inputs[0];
 
+            if(button_inputs[1]){
+                if(!flag_theta_pre){
+                    flag_theta = (flag_theta + 1)%2;
+                }
+            }
+            flag_theta_pre = button_inputs[1];
         };
+
 
         joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, joy_callback); // joyのtopicを受け取る
         _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 10);
+        _pub_micro_ros_r = this->create_publisher<actuator_msg>("mros_input_r", 10);
+        _pub_micro_ros_theta = this->create_publisher<actuator_msg>("mros_input_theta", 10);
+
         timer_ = this->create_wall_timer(100ms, std::bind(&C620Test::timer_callback, this));
     }
 
@@ -62,12 +56,20 @@ namespace arm_controller{
         target_data.device.node_type.node_type = actuator_msgs::msg::NodeType::NODE_C620;
         target_data.device.node_id = 0;
         target_data.device.device_num = 1;
-        if(flag){
+        if(flag_r){
             target_data.target_value = 3.141592f * 2.0f;
         }else{
             target_data.target_value = 0.0f;
         }
-        _pub_micro_ros->publish(target_data);
+        _pub_micro_ros_r->publish(target_data);
+
+        target_data.device.device_num = 2;
+        if(flag_theta){
+            target_data.target_value = 100.0f;
+        }else{
+            target_data.target_value = 0.0f;
+        }
+        _pub_micro_ros_theta->publish(target_data);
     }
 
     C620Test::~C620Test(){}
