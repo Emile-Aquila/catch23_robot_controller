@@ -37,7 +37,8 @@ namespace arm_controller{
         uint8_t ikko_servo_id = 1;
         uint8_t wrist_servo_id = 0;  // TODO: rosparam化
 
-        auto joy_callback = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
+        // r-thetaで動かす
+        auto joy_callback_r_theta = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
             JoyStickState joy_state(msg);
 
             auto [d_theta, d_r] = joy_state.get_joystick_left_xy();
@@ -68,7 +69,8 @@ namespace arm_controller{
             }
         };
 
-        auto joy_callback2 = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
+        // xy座標で動かす
+        auto joy_callback_xy = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
             JoyStickState joy_state(msg);
 
             auto [d_x, d_y] = joy_state.get_joystick_left_xy();
@@ -85,8 +87,7 @@ namespace arm_controller{
             _send_request_arm_state(request_arm_state);
         };
 
-        joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 5, joy_callback); // joyのtopicを受け取る
-
+        joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 5, joy_callback_r_theta);
         _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 10);
         _pub_micro_ros_r = this->create_publisher<actuator_msg>("mros_input_r", 10);
         _pub_micro_ros_theta = this->create_publisher<actuator_msg>("mros_input_theta", 10);
@@ -132,15 +133,15 @@ namespace arm_controller{
 
     void ArmControllerNode::_b3m_init(uint8_t servo_id) {  // b3mのinit
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 動作モードをfreeに
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(20ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 位置制御モードに
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(20ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x01, 0x29)); // 軌道生成タイプ：Even (直線補間タイプの位置制御を指定)
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(20ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x5C)); // PIDの設定を位置制御のプリセットに合わせる
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(20ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x28)); // 動作モードをNormalに
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(20ms);
     }
 
     void ArmControllerNode::_send_request_arm_state(const ArmState &req_arm_state) {

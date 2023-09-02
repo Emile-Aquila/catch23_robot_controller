@@ -1,0 +1,4 @@
+TipState start_state
+TipState goal_state
+---
+TipState[] trajectory

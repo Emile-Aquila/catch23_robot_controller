@@ -30,21 +30,12 @@ namespace state_publisher {
         pub_tip_tgt = this->create_publisher<catch23_robot_controller::msg::TipState>("tip_state_tgt", 10);
 
         auto timer_callback = [this](){
-            auto tip_data = _convert_tip_state(arm_fk(this->arm_state_fb));
-            auto tip_data_tgt = _convert_tip_state(arm_fk(this->arm_state_tgt));
+            auto tip_data = convert_tip_state(arm_fk(this->arm_state_fb));
+            auto tip_data_tgt = convert_tip_state(arm_fk(this->arm_state_tgt));
             this->pub_tip->publish(tip_data);
             this->pub_tip_tgt->publish(tip_data_tgt);
         };
         timer = this->create_wall_timer(30ms, timer_callback);
-    }
-
-    catch23_robot_controller::msg::TipState StatePublisherNode::_convert_tip_state(const TipState &tip_state) {
-        catch23_robot_controller::msg::TipState tip_data;
-        tip_data.x = tip_state.x;
-        tip_data.y = tip_state.y;
-        tip_data.z = tip_state.z;
-        tip_data.theta = tip_state.theta;
-        return tip_data;
     }
 };
 

@@ -5,6 +5,8 @@
 #ifndef ROS2_WS_ROBOT_STATE_HPP
 #define ROS2_WS_ROBOT_STATE_HPP
 
+#include <catch23_robot_controller/msg/tip_state.hpp>
+
 struct ArmState{  // Main Arm自体のstate
     float r, theta, z;  // r-thetaのアームのstate
     float phi; // handの角度, 原点はarmの機構の原点
@@ -34,6 +36,7 @@ public:
 
 ArmState arm_ik(const TipState& tip_state);
 TipState arm_fk(const ArmState& arm_state);
-
+TipState convert_tip_state(const catch23_robot_controller::msg::TipState& tip_state_msg);
+catch23_robot_controller::msg::TipState convert_tip_state(const TipState& tip_state);
 
 #endif //ROS2_WS_ROBOT_STATE_HPP

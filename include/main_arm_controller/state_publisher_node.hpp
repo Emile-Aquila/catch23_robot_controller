@@ -28,8 +28,6 @@ namespace state_publisher{
         rclcpp::Publisher<catch23_robot_controller::msg::TipState>::SharedPtr pub_tip, pub_tip_tgt;
         rclcpp::TimerBase::SharedPtr timer;
         ArmState arm_state_fb, arm_state_tgt;
-
-        catch23_robot_controller::msg::TipState _convert_tip_state(const TipState& tip_state);
     };
 }
 

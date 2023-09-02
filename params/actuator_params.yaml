@@ -1,8 +1,11 @@
 servo_ids:
   id_hand: 1
+  id_ikko: 0
 c620_ids:
   id_r: 2
   id_theta: 1
 mcmd_params:
   mcmd_z:
     mcmd: 3
+    node_id: 0
+    device_id: 1
