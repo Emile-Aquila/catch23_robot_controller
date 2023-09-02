@@ -19,7 +19,12 @@ namespace arm_trajectory{
 
     void ArmTrajectoryService::srv_callback(std::shared_ptr<arm_traj_srv::Request> request,
                                             std::shared_ptr<arm_traj_srv::Response> response) {
-        tip_state_msg start = request->start_state, goal = request->goal_state;
+        if(request->waypoints.size() < 2){
+            response->is_feasible = false;
+            response->trajectory.clear();
+            return;
+        }  // 解なし
+
     }
 };
 

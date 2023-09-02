@@ -57,7 +57,7 @@ namespace arm_controller{
         target_data.device.node_id = 0;
         target_data.device.device_num = 2;
         if(flag_r){
-            target_data.target_value = 100.0f;
+            target_data.target_value = -300.0f;
         }else{
             target_data.target_value = 0.0f;
         }
@@ -65,7 +65,7 @@ namespace arm_controller{
 
         target_data.device.device_num = 1;
         if(flag_theta){
-            target_data.target_value = 3.141592f * 2.0f;
+            target_data.target_value = 3.141592f;
         }else{
             target_data.target_value = 0.0f;
         }

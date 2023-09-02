@@ -1,4 +1,4 @@
-TipState start_state
-TipState goal_state
+TipState[] waypoints
 ---
 TipState[] trajectory
+bool is_feasible

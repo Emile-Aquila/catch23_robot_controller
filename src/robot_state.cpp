@@ -3,6 +3,7 @@
 //
 
 #include <main_arm_controller/robot_state.hpp>
+#include <catch23_robot_controller/msg/tip_state.hpp>
 #include <cmath>
 
 

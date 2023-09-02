@@ -7,6 +7,7 @@
 
 #include <catch23_robot_controller/msg/tip_state.hpp>
 
+
 struct ArmState{  // Main Arm自体のstate
     float r, theta, z;  // r-thetaのアームのstate
     float phi; // handの角度, 原点はarmの機構の原点

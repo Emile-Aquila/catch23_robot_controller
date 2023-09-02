@@ -37,7 +37,7 @@ def generate_launch_description():
                     name='main_arm_controller_component'),
                 ComposableNode(
                     package='catch23_robot_controller',
-                    plugin='state_publisher::StatePublisherNode',
+                    plugin='arm_controller::StatePublisherNode',
                     name='state_publisher_component'),
             ],
             output='both',

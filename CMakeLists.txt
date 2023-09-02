@@ -55,7 +55,7 @@ target_link_libraries(c620_test "${cpp_typesupport_target}")
 
 
 ament_auto_add_library(state_publisher_component SHARED src/state_publisher_node.cpp src/robot_state.cpp)
-rclcpp_components_register_nodes(state_publisher_component "state_publisher::StatePublisherNode")
+rclcpp_components_register_nodes(state_publisher_component "arm_controller::StatePublisherNode")
 #rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 target_link_libraries(state_publisher_component "${cpp_typesupport_target}")
 
@@ -64,5 +64,5 @@ target_link_libraries(state_publisher_component "${cpp_typesupport_target}")
 ament_auto_package(
         INSTALL_TO_SHARE
         launch
-        params
+#        params
 )

@@ -4,16 +4,18 @@
 
 #include <chrono>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_components/register_node_macro.hpp>
 #include <main_arm_controller/state_publisher_node.hpp>
 #include <actuator_msgs/msg/c620_feedback.hpp>
 #include <catch23_robot_controller/msg/tip_state.hpp>
-#include <rclcpp_components/register_node_macro.hpp>
+#include <actuator_msgs/msg/actuator_msg.hpp>
 
 
 using namespace std::chrono_literals;
 
-namespace state_publisher {
-    StatePublisherNode::StatePublisherNode(const rclcpp::NodeOptions &options):Node("state_publisher", options){
+namespace arm_controller {
+    StatePublisherNode::StatePublisherNode(const rclcpp::NodeOptions &options)
+        :Node("state_publisher_component", options){
         auto theta_callback = [this](const actuator_msgs::msg::C620Feedback &msg) -> void {
             this->arm_state_fb.theta = msg.position;
             this->arm_state_tgt.theta = msg.target_value;
@@ -24,21 +26,39 @@ namespace state_publisher {
             this->arm_state_tgt.r = msg.target_value;
         };
 
+        auto ref_r_callback = [this](const actuator_msgs::msg::ActuatorMsg &msg) -> void {
+            this->arm_state_ref.r = msg.target_value;
+        };
+
+        auto ref_theta_callback = [this](const actuator_msgs::msg::ActuatorMsg &msg) -> void {
+            this->arm_state_ref.theta = msg.target_value;
+        };
+
         theta_sub = this->create_subscription<actuator_msgs::msg::C620Feedback>("c620_theta", 5, theta_callback);
         r_sub = this->create_subscription<actuator_msgs::msg::C620Feedback>("c620_r", 5, r_callback);
+
+        r_ref = this->create_subscription<actuator_msgs::msg::ActuatorMsg>("mros_input_r", 5, ref_r_callback);
+        theta_ref = this->create_subscription<actuator_msgs::msg::ActuatorMsg>("mros_input_theta", 5, ref_theta_callback);
+
         pub_tip = this->create_publisher<catch23_robot_controller::msg::TipState>("tip_state", 10);
         pub_tip_tgt = this->create_publisher<catch23_robot_controller::msg::TipState>("tip_state_tgt", 10);
+        pub_tip_ref = this->create_publisher<catch23_robot_controller::msg::TipState>("tip_state_ref", 10);
 
         auto timer_callback = [this](){
-            auto tip_data = convert_tip_state(arm_fk(this->arm_state_fb));
-            auto tip_data_tgt = convert_tip_state(arm_fk(this->arm_state_tgt));
+            catch23_robot_controller::msg::TipState tip_data = convert_tip_state(arm_fk(this->arm_state_fb));
+            catch23_robot_controller::msg::TipState tip_data_tgt = convert_tip_state(arm_fk(this->arm_state_tgt));
+            catch23_robot_controller::msg::TipState tip_data_ref = convert_tip_state(arm_fk(this->arm_state_ref));
+
             this->pub_tip->publish(tip_data);
             this->pub_tip_tgt->publish(tip_data_tgt);
+            this->pub_tip_ref->publish(tip_data_ref);
         };
         timer = this->create_wall_timer(30ms, timer_callback);
     }
+
+    StatePublisherNode::~StatePublisherNode(){}
 };
 
 
 
-RCLCPP_COMPONENTS_REGISTER_NODE(state_publisher::StatePublisherNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(arm_controller::StatePublisherNode)

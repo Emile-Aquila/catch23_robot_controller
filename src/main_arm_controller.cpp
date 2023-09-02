@@ -24,7 +24,7 @@ float clip_f(float value, float min_v, float max_v){
 }
 
 void clip_arm_state(ArmState& arm_state){
-    arm_state.r = clip_f(arm_state.r, -300.0f, 0.0f);
+    arm_state.r = clip_f(arm_state.r, 0.0f, 300.0f);
     arm_state.theta = clip_f(arm_state.theta, -M_PI/3.0f, M_PI/3.0f);
     arm_state.z = clip_f(arm_state.z, 0.0f, 0.0f);  // TODO: 実装
     arm_state.phi = clip_f(arm_state.phi, 0.0f, 0.0f);  // TODO: 実装
@@ -87,7 +87,7 @@ namespace arm_controller{
             _send_request_arm_state(request_arm_state);
         };
 
-        joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 5, joy_callback_r_theta);
+        joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 5, joy_callback_xy);
         _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 10);
         _pub_micro_ros_r = this->create_publisher<actuator_msg>("mros_input_r", 10);
         _pub_micro_ros_theta = this->create_publisher<actuator_msg>("mros_input_theta", 10);
@@ -148,7 +148,7 @@ namespace arm_controller{
         uint8_t wrist_servo_id = 0;  // TODO: rosparam化
         _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, req_arm_state.z));
         _pub_micro_ros_theta->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, req_arm_state.theta));
-        _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, req_arm_state.r));
+        _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, -req_arm_state.r));
         _pub_kondo->publish(_gen_b3m_set_pos_msg(wrist_servo_id, req_arm_state.phi, 0));
     }
 }
