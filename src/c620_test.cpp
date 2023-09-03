@@ -26,19 +26,19 @@ namespace arm_controller{
             auto list_axes = msg.axes;
             std::vector<int> button_inputs = msg.buttons;  // target
 
-            if(button_inputs[0]){
+            if(button_inputs[1]){
                 if(!flag_r_pre){
                     flag_r = (flag_r+1)%2;
                 }
             }
-            flag_r_pre = button_inputs[0];
+            flag_r_pre = button_inputs[1];
 
-            if(button_inputs[1]){
+            if(button_inputs[0]){
                 if(!flag_theta_pre){
                     flag_theta = (flag_theta + 1)%2;
                 }
             }
-            flag_theta_pre = button_inputs[1];
+            flag_theta_pre = button_inputs[0];
         };
 
 
@@ -57,7 +57,7 @@ namespace arm_controller{
         target_data.device.node_id = 0;
         target_data.device.device_num = 2;
         if(flag_r){
-            target_data.target_value = -300.0f;
+            target_data.target_value = 100.0f;
         }else{
             target_data.target_value = 0.0f;
         }

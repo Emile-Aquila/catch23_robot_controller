@@ -33,7 +33,7 @@ namespace arm_controller{
         kondo_msg _gen_b3m_write_msg(uint8_t servo_id, uint8_t TxData, uint8_t address);
         void _send_request_arm_state(const ArmState& req_arm_state);
 
-        TipState tip_state_tgt;  // main armの目標位置
+        TipState tip_state_tgt, tip_origin;  // main armの目標位置
         ArmState request_arm_state;  // 送信するarmのstate
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros, _pub_micro_ros_r, _pub_micro_ros_theta;
