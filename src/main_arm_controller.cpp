@@ -29,11 +29,15 @@ const float min_theta = -M_PI / 2.0f;
 const float max_theta = M_PI;
 
 
+float rad_to_deg(const float& rad){
+    return (float)(rad / M_PI * 180.0f);
+}
+
 void clip_arm_state(ArmState& arm_state){
     arm_state.r = clip_f(arm_state.r, min_r, max_r);
     arm_state.theta = clip_f(arm_state.theta, min_theta, max_theta);
-    arm_state.z = clip_f(arm_state.z, 0.0f, 0.0f);  // TODO: 実装
-    arm_state.phi = clip_f(arm_state.phi, 0.0f, 0.0f);  // TODO: 実装
+    arm_state.z = clip_f(arm_state.z, 0.0f, 225.0f);
+    arm_state.phi = clip_f(arm_state.phi, -M_PI*32.0f/18.0f, M_PI*32.0f/18.0f);  // TODO: 実装
 }
 
 ArmState clip_arm_state(const ArmState& arm_state) {
@@ -41,20 +45,17 @@ ArmState clip_arm_state(const ArmState& arm_state) {
     ans.r = clip_f(arm_state.r, min_r, max_r);
     ans.theta = clip_f(arm_state.theta, min_theta, max_theta);
     ans.z = clip_f(arm_state.z, 0.0f, 0.0f);  // TODO: 実装
-    ans.theta = clip_f(arm_state.phi, 0.0f, 0.0f);  // TODO: 実装
+//    ans.theta = clip_f(arm_state.phi, 0.0f, 0.0f);  // TODO: 実装
     return ans;
 }
 
-float rad_to_deg(const float& rad){
-    return (float)(rad * M_PI * 2.0f / 360.0f);
-}
 
 
 namespace arm_controller{
     ArmControllerNode::ArmControllerNode(const rclcpp::NodeOptions & options)
     : Node("main_arm_controller_component", options) {
-        uint8_t ikko_servo_id = 1;
-        uint8_t wrist_servo_id = 0;  // TODO: rosparam化
+        uint8_t ikko_servo_id = 0;
+        uint8_t wrist_servo_id = 1;  // TODO: rosparam化
         tip_state_tgt = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置
 
         // r-thetaで動かす
@@ -95,8 +96,7 @@ namespace arm_controller{
 
             auto [d_x, d_y] = joy_state.get_joystick_left_xy();
             auto [d_theta, d_z] = joy_state.get_joystick_right_xy();
-
-            tip_state_tgt = tip_state_tgt + TipState(d_x * 10.0f, d_y * 10.0f, d_z, d_theta);
+            tip_state_tgt = tip_state_tgt + TipState(d_x * 10.0f, d_y * 10.0f, d_z, d_theta * 2.0f * M_PI/ 180.0f);
             request_arm_state = arm_ik(tip_state_tgt);
             clip_arm_state(request_arm_state);
             tip_state_tgt = arm_fk(request_arm_state);
@@ -153,23 +153,23 @@ namespace arm_controller{
 
     void ArmControllerNode::_b3m_init(uint8_t servo_id) {  // b3mのinit
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 動作モードをfreeに
-        rclcpp::sleep_for(20ms);
+        rclcpp::sleep_for(100ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 位置制御モードに
-        rclcpp::sleep_for(20ms);
+        rclcpp::sleep_for(100ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x01, 0x29)); // 軌道生成タイプ：Even (直線補間タイプの位置制御を指定)
-        rclcpp::sleep_for(20ms);
+        rclcpp::sleep_for(100ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x5C)); // PIDの設定を位置制御のプリセットに合わせる
-        rclcpp::sleep_for(20ms);
+        rclcpp::sleep_for(100ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x28)); // 動作モードをNormalに
-        rclcpp::sleep_for(20ms);
+        rclcpp::sleep_for(100ms);
     }
 
     void ArmControllerNode::_send_request_arm_state(const ArmState &req_arm_state) {
-        uint8_t wrist_servo_id = 0;  // TODO: rosparam化
+        uint8_t wrist_servo_id = 1;  // TODO: rosparam化
         _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, req_arm_state.z));
         _pub_micro_ros_theta->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, req_arm_state.theta));
         _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, req_arm_state.r));
-        _pub_kondo->publish(_gen_b3m_set_pos_msg(wrist_servo_id, rad_to_deg(req_arm_state.phi), 0));
+        _pub_kondo->publish(_gen_b3m_set_pos_msg(wrist_servo_id, -rad_to_deg(req_arm_state.phi), 0));
     }
 }
 

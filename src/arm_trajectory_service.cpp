@@ -26,6 +26,8 @@ namespace arm_trajectory{
         }  // 解なし
 
     }
+
+    ArmTrajectoryService::~ArmTrajectoryService(){}
 };
 
 

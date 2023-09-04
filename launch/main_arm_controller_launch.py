@@ -112,7 +112,7 @@ def generate_launch_description():
                     name='joy_node',
                     parameters=[{
                         'dev': joy_dev,
-                        'deadzone': 0.3,
+                        'deadzone': 0.2,
                         'autorepeat_rate': 20.0,
                     }]),
                 ComposableNode(
