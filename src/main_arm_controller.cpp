@@ -28,11 +28,25 @@ const float max_r = 975.0f;
 const float min_theta = -M_PI / 2.0f;
 const float max_theta = M_PI;
 
+
 void clip_arm_state(ArmState& arm_state){
     arm_state.r = clip_f(arm_state.r, min_r, max_r);
     arm_state.theta = clip_f(arm_state.theta, min_theta, max_theta);
     arm_state.z = clip_f(arm_state.z, 0.0f, 0.0f);  // TODO: 実装
     arm_state.phi = clip_f(arm_state.phi, 0.0f, 0.0f);  // TODO: 実装
+}
+
+ArmState clip_arm_state(const ArmState& arm_state) {
+    ArmState ans;
+    ans.r = clip_f(arm_state.r, min_r, max_r);
+    ans.theta = clip_f(arm_state.theta, min_theta, max_theta);
+    ans.z = clip_f(arm_state.z, 0.0f, 0.0f);  // TODO: 実装
+    ans.theta = clip_f(arm_state.phi, 0.0f, 0.0f);  // TODO: 実装
+    return ans;
+}
+
+float rad_to_deg(const float& rad){
+    return (float)(rad * M_PI * 2.0f / 360.0f);
 }
 
 
@@ -81,6 +95,7 @@ namespace arm_controller{
 
             auto [d_x, d_y] = joy_state.get_joystick_left_xy();
             auto [d_theta, d_z] = joy_state.get_joystick_right_xy();
+
             tip_state_tgt = tip_state_tgt + TipState(d_x * 10.0f, d_y * 10.0f, d_z, d_theta);
             request_arm_state = arm_ik(tip_state_tgt);
             clip_arm_state(request_arm_state);
@@ -114,7 +129,6 @@ namespace arm_controller{
         target_data.device.device_num = device_id;
         target_data.target_value = target_value;
         target_data.air_target = air_target;
-//        _pub_micro_ros->publish(target_data);
         return target_data;
     }
 
@@ -154,8 +168,8 @@ namespace arm_controller{
         uint8_t wrist_servo_id = 0;  // TODO: rosparam化
         _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, req_arm_state.z));
         _pub_micro_ros_theta->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, req_arm_state.theta));
-        _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, req_arm_state.r - min_r));
-        _pub_kondo->publish(_gen_b3m_set_pos_msg(wrist_servo_id, req_arm_state.phi, 0));
+        _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, req_arm_state.r));
+        _pub_kondo->publish(_gen_b3m_set_pos_msg(wrist_servo_id, rad_to_deg(req_arm_state.phi), 0));
     }
 }
 
