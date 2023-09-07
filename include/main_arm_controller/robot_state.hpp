@@ -20,6 +20,7 @@ struct ArmState{  // Main Arm自体のstate
     ArmState operator *(const float value) const{ return {r*value, theta*value, z*value, phi * value}; }
     ArmState operator -(const ArmState& as2) const{ return {r - as2.r, theta - as2.theta, z - as2.z, phi - as2.phi}; }
     bool operator ==(const ArmState& as2) const { return (r==as2.r && theta == as2.theta && z == as2.z && phi == as2.phi); }
+    bool operator !=(const ArmState& as2) const { return !(r==as2.r && theta == as2.theta && z == as2.z && phi == as2.phi); }
 };
 
 
@@ -34,6 +35,7 @@ public:
     TipState operator *(const float value) const{ return {x*value, y*value, z*value, theta*value}; }
     TipState operator -(const TipState& tip2) const{ return {x-tip2.x, y-tip2.y, z-tip2.z, theta-tip2.theta}; }
     bool operator ==(const TipState& tip2) const { return (x==tip2.x && y==tip2.y && z == tip2.z && theta == tip2.theta); }
+    bool operator !=(const TipState& tip2) const { return !(x==tip2.x && y==tip2.y && z == tip2.z && theta == tip2.theta); }
 };
 
 

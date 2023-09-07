@@ -33,19 +33,13 @@ float rad_to_deg(const float& rad){
     return (float)(rad / M_PI * 180.0f);
 }
 
-void clip_arm_state(ArmState& arm_state){
-    arm_state.r = clip_f(arm_state.r, min_r, max_r);
-    arm_state.theta = clip_f(arm_state.theta, min_theta, max_theta);
-    arm_state.z = clip_f(arm_state.z, 0.0f, 225.0f);
-    arm_state.phi = clip_f(arm_state.phi, -M_PI*32.0f/18.0f, M_PI*32.0f/18.0f);  // TODO: 実装
-}
 
 ArmState clip_arm_state(const ArmState& arm_state) {
     ArmState ans;
     ans.r = clip_f(arm_state.r, min_r, max_r);
     ans.theta = clip_f(arm_state.theta, min_theta, max_theta);
-    ans.z = clip_f(arm_state.z, 0.0f, 0.0f);  // TODO: 実装
-//    ans.theta = clip_f(arm_state.phi, 0.0f, 0.0f);  // TODO: 実装
+    ans.z = clip_f(arm_state.z, 0.0f, 225.0f);
+    ans.phi = clip_f(arm_state.phi, -M_PI*32.0f/18.0f, M_PI*32.0f/18.0f);  // TODO: 実装
     return ans;
 }
 
@@ -98,10 +92,14 @@ namespace arm_controller{
             auto [d_theta, d_z] = joy_state.get_joystick_right_xy();
             if(d_z > 0.0f)d_z = 1.0f;
             if(d_z < 0.0f)d_z = -1.0f;
-            tip_state_tgt = tip_state_tgt + TipState(d_x * 10.0f, d_y * 10.0f, d_z * 5.0f, d_theta * 2.0f * M_PI/ 180.0f);
-            request_arm_state = arm_ik(tip_state_tgt);
-            clip_arm_state(request_arm_state);
-            tip_state_tgt = arm_fk(request_arm_state);
+
+            auto next_tgt_tip_state = tip_state_tgt + TipState(d_x * 10.0f, d_y * 10.0f, d_z * 5.0f, d_theta * 2.0f * M_PI/ 180.0f);
+            auto next_tgt_arm_state = arm_ik(next_tgt_tip_state);
+            auto clipped_arm_state = clip_arm_state(next_tgt_arm_state);
+            if(clipped_arm_state == next_tgt_arm_state){  // TODO: verify
+                request_arm_state = next_tgt_arm_state;
+                tip_state_tgt = arm_fk(request_arm_state);
+            }
 
             RCLCPP_INFO(this->get_logger(), "r,theta,z,phi: %lf, %lf, %lf, %lf",
                         request_arm_state.r, request_arm_state.theta, request_arm_state.z, request_arm_state.phi);
