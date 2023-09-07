@@ -119,8 +119,10 @@ namespace arm_controller{
 
         joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 5, joy_callback_xy);
         _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 10);
-        _pub_micro_ros_r = this->create_publisher<actuator_msg>("mros_input_r", 10);
-        _pub_micro_ros_theta = this->create_publisher<actuator_msg>("mros_input_theta", 10);
+//        _pub_micro_ros_r = this->create_publisher<actuator_msg>("mros_input_r", 10);
+//        _pub_micro_ros_theta = this->create_publisher<actuator_msg>("mros_input_theta", 10);
+        _pub_micro_ros_r = this->create_publisher<std_msgs::msg::Float32>("mros_input_r", 10);
+        _pub_micro_ros_theta = this->create_publisher<std_msgs::msg::Float32>("mros_input_theta", 10);
 
         _pub_kondo = this->create_publisher<kondo_msg>("kondo_b3m_topic", 10);
 
@@ -175,9 +177,15 @@ namespace arm_controller{
 
     void ArmControllerNode::_send_request_arm_state(const ArmState &req_arm_state) {
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
+//        _pub_micro_ros_theta->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, req_arm_state.theta));
+//        _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, req_arm_state.r));
+        std_msgs::msg::Float32 tgt_data;
+        tgt_data.data = req_arm_state.r;
+        _pub_micro_ros_r->publish(tgt_data);
+        tgt_data.data = req_arm_state.theta;
+        _pub_micro_ros_theta->publish(tgt_data);
+
         _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, req_arm_state.z));
-        _pub_micro_ros_theta->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, req_arm_state.theta));
-        _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, req_arm_state.r));
         _pub_kondo->publish(_gen_b3m_set_pos_msg(wrist_servo_id, -rad_to_deg(req_arm_state.phi), 0));
     }
 }
