@@ -96,7 +96,9 @@ namespace arm_controller{
 
             auto [d_x, d_y] = joy_state.get_joystick_left_xy();
             auto [d_theta, d_z] = joy_state.get_joystick_right_xy();
-            tip_state_tgt = tip_state_tgt + TipState(d_x * 10.0f, d_y * 10.0f, d_z, d_theta * 2.0f * M_PI/ 180.0f);
+            if(d_z > 0.0f)d_z = 1.0f;
+            if(d_z < 0.0f)d_z = -1.0f;
+            tip_state_tgt = tip_state_tgt + TipState(d_x * 10.0f, d_y * 10.0f, d_z * 5.0f, d_theta * 2.0f * M_PI/ 180.0f);
             request_arm_state = arm_ik(tip_state_tgt);
             clip_arm_state(request_arm_state);
             tip_state_tgt = arm_fk(request_arm_state);
@@ -106,6 +108,15 @@ namespace arm_controller{
             RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %lf, %lf, %lf, %lf",
                         tip_state_tgt.x, tip_state_tgt.y, tip_state_tgt.z, tip_state_tgt.theta);
             _send_request_arm_state(request_arm_state);
+            if(joy_state.get_button_1_indexed(5)){
+                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 1, 0.0f, true));
+                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 0, 0.0f, true));
+                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 2, 0.0f, true));
+            }else if(joy_state.get_button_1_indexed(6)){
+                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 1, 0.0f, false));
+                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 0, 0.0f, false));
+                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 2, 0.0f, false));
+            }
         };
 
         joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 5, joy_callback_xy);

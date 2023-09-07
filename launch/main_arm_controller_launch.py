@@ -113,7 +113,7 @@ def generate_launch_description():
                     parameters=[{
                         'dev': joy_dev,
                         'deadzone': 0.2,
-                        'autorepeat_rate': 20.0,
+                        'autorepeat_rate': 30.0,
                     }]),
                 ComposableNode(
                     package='catch23_robot_controller',
