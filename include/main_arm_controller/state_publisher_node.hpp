@@ -27,7 +27,7 @@ namespace arm_controller{
         ~StatePublisherNode();
     private:
         rclcpp::Subscription<actuator_msgs::msg::C620Feedback>::SharedPtr theta_sub, r_sub;
-        rclcpp::Subscription<actuator_msgs::msg::ActuatorMsg>::SharedPtr theta_ref, r_ref;
+        rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr theta_ref, r_ref;
         rclcpp::Publisher<catch23_robot_controller::msg::TipState>::SharedPtr pub_tip, pub_tip_tgt, pub_tip_ref;
         rclcpp::TimerBase::SharedPtr timer;
         ArmState arm_state_fb, arm_state_tgt, arm_state_ref;

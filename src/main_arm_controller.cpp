@@ -167,7 +167,7 @@ namespace arm_controller{
         rclcpp::sleep_for(100ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 位置制御モードに
         rclcpp::sleep_for(100ms);
-        _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x01, 0x29)); // 軌道生成タイプ：Even (直線補間タイプの位置制御を指定)
+        _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x29)); // 軌道生成タイプ：Normal (最速で回転)
         rclcpp::sleep_for(100ms);
         _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x5C)); // PIDの設定を位置制御のプリセットに合わせる
         rclcpp::sleep_for(100ms);

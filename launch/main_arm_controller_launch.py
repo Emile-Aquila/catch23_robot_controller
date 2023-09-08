@@ -107,6 +107,11 @@ def generate_launch_description():
                     name="kondo_b3m_driver_component",
                 ),
                 ComposableNode(
+                    package="kondo_drivers",
+                    plugin="kondo_drivers::KondoB3mDriverService",
+                    name="kondo_b3m_service_component",
+                ),
+                ComposableNode(
                     package='joy',
                     plugin='joy::Joy',
                     name='joy_node',

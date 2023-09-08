@@ -26,19 +26,19 @@ namespace arm_controller {
             this->arm_state_tgt.r = msg.target_value;
         };
 
-        auto ref_r_callback = [this](const actuator_msgs::msg::ActuatorMsg &msg) -> void {
-            this->arm_state_ref.r = msg.target_value;
+        auto ref_r_callback = [this](const std_msgs::msg::Float32 &msg) -> void {
+            this->arm_state_ref.r = msg.data;
         };
 
-        auto ref_theta_callback = [this](const actuator_msgs::msg::ActuatorMsg &msg) -> void {
-            this->arm_state_ref.theta = msg.target_value;
+        auto ref_theta_callback = [this](const std_msgs::msg::Float32 &msg) -> void {
+            this->arm_state_ref.theta = msg.data;
         };
 
         theta_sub = this->create_subscription<actuator_msgs::msg::C620Feedback>("c620_theta", 5, theta_callback);
         r_sub = this->create_subscription<actuator_msgs::msg::C620Feedback>("c620_r", 5, r_callback);
 
-        r_ref = this->create_subscription<actuator_msgs::msg::ActuatorMsg>("mros_input_r", 5, ref_r_callback);
-        theta_ref = this->create_subscription<actuator_msgs::msg::ActuatorMsg>("mros_input_theta", 5, ref_theta_callback);
+        r_ref = this->create_subscription<std_msgs::msg::Float32>("mros_input_r", 10, ref_r_callback);
+        theta_ref = this->create_subscription<std_msgs::msg::Float32>("mros_input_theta", 10, ref_theta_callback);
 
         pub_tip = this->create_publisher<catch23_robot_controller::msg::TipState>("tip_state", 10);
         pub_tip_tgt = this->create_publisher<catch23_robot_controller::msg::TipState>("tip_state_tgt", 10);
