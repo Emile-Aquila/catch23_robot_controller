@@ -8,7 +8,6 @@
 #include <main_arm_controller/state_publisher_node.hpp>
 #include <actuator_msgs/msg/c620_feedback.hpp>
 #include <catch23_robot_controller/msg/tip_state.hpp>
-#include <actuator_msgs/msg/actuator_msg.hpp>
 
 
 using namespace std::chrono_literals;

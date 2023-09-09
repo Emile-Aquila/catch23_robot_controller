@@ -9,7 +9,7 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
-#include <main_arm_controller/robot_state.hpp>
+#include <main_arm_controller/utils/robot_state.hpp>
 #include <main_arm_controller/trajectory/spline.h>
 
 

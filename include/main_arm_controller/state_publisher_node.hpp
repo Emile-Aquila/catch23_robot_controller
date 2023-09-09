@@ -15,7 +15,7 @@
 #include "std_msgs/msg/float32.hpp"
 #include <actuator_msgs/msg/c620_feedback.hpp>
 #include <catch23_robot_controller/msg/tip_state.hpp>
-#include <main_arm_controller/robot_state.hpp>
+#include <main_arm_controller/utils/robot_state.hpp>
 #include <actuator_msgs/msg/actuator_msg.hpp>
 
 

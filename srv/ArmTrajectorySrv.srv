@@ -1,4 +1,4 @@
 TipState[] waypoints
 ---
-TipState[] trajectory
+ArmState[] trajectory
 bool is_feasible

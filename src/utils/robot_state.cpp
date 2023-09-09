@@ -2,7 +2,7 @@
 // Created by emile on 23/08/31.
 //
 
-#include <main_arm_controller/robot_state.hpp>
+#include <main_arm_controller/utils/robot_state.hpp>
 #include <catch23_robot_controller/msg/tip_state.hpp>
 #include <cmath>
 
@@ -36,4 +36,16 @@ catch23_robot_controller::msg::TipState convert_tip_state(const TipState &tip_st
     ans.z = tip_state.z;
     ans.theta = tip_state.theta;
     return ans;
+}
+
+ArmState convert_arm_state(const catch23_robot_controller::msg::ArmState &arm_state_msg) {
+    return {arm_state_msg.r, arm_state_msg.theta, arm_state_msg.z, arm_state_msg.phi};
+}
+
+catch23_robot_controller::msg::ArmState convert_arm_state(const ArmState &arm_state) {
+    catch23_robot_controller::msg::ArmState ans;
+    ans.r = arm_state.r;
+    ans.theta = arm_state.theta;
+    ans.phi = arm_state.phi;
+    ans.z = arm_state.z;
 }

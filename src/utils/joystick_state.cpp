@@ -2,7 +2,7 @@
 // Created by emile on 23/08/31.
 //
 
-#include <main_arm_controller/joystick_state.hpp>
+#include <main_arm_controller/utils/joystick_state.hpp>
 #include <iostream>
 
 JoyStickState::JoyStickState() = default;

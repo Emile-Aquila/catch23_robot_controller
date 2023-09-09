@@ -47,14 +47,14 @@ rosidl_generate_interfaces(
 
 
 ## Component Settings
-ament_auto_add_library(main_arm_controller_component SHARED src/main_arm_controller.cpp
-        src/joystick_state.cpp src/robot_state.cpp src/trajectory/spline_utils.cpp src/trajectory/r_theta_optimal_planning.cpp)
+ament_auto_add_library(main_arm_controller_component SHARED src/main_arm_controller.cpp src/utils/joystick_state.cpp src/utils/robot_state.cpp)
 rclcpp_components_register_nodes(main_arm_controller_component "arm_controller::ArmControllerNode")
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 target_link_libraries(main_arm_controller_component "${cpp_typesupport_target}")
 
 
-ament_auto_add_library(arm_trajectory_service_component SHARED src/arm_trajectory_service.cpp src/robot_state.cpp)
+ament_auto_add_library(arm_trajectory_service_component SHARED src/arm_trajectory_service.cpp
+        src/utils/robot_state.cpp  src/trajectory/spline_utils.cpp src/trajectory/r_theta_optimal_planning.cpp)
 rclcpp_components_register_nodes(arm_trajectory_service_component "arm_trajectory::ArmTrajectoryService")
 #rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 target_link_libraries(arm_trajectory_service_component "${cpp_typesupport_target}")
@@ -66,7 +66,7 @@ rclcpp_components_register_nodes(c620_test "arm_controller::C620Test")
 target_link_libraries(c620_test "${cpp_typesupport_target}")
 
 
-ament_auto_add_library(state_publisher_component SHARED src/state_publisher_node.cpp src/robot_state.cpp)
+ament_auto_add_library(state_publisher_component SHARED src/state_publisher_node.cpp src/utils/robot_state.cpp)
 rclcpp_components_register_nodes(state_publisher_component "arm_controller::StatePublisherNode")
 #rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 target_link_libraries(state_publisher_component "${cpp_typesupport_target}")

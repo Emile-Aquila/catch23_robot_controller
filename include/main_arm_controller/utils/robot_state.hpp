@@ -6,6 +6,7 @@
 #define ROS2_WS_ROBOT_STATE_HPP
 
 #include <catch23_robot_controller/msg/tip_state.hpp>
+#include <catch23_robot_controller/msg/arm_state.hpp>
 
 
 struct ArmState{  // Main Arm自体のstate
@@ -41,7 +42,10 @@ public:
 
 ArmState arm_ik(const TipState& tip_state);
 TipState arm_fk(const ArmState& arm_state);
+
 TipState convert_tip_state(const catch23_robot_controller::msg::TipState& tip_state_msg);
+ArmState convert_arm_state(const catch23_robot_controller::msg::ArmState& arm_state_msg);
 catch23_robot_controller::msg::TipState convert_tip_state(const TipState& tip_state);
+catch23_robot_controller::msg::ArmState convert_arm_state(const ArmState& arm_state);
 
 #endif //ROS2_WS_ROBOT_STATE_HPP

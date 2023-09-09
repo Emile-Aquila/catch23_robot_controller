@@ -14,7 +14,6 @@
 #include <actuator_msgs/msg/actuator_msg.hpp>
 #include <actuator_msgs/msg/device_info.hpp>
 #include <rclcpp/qos.hpp>
-#include <main_arm_controller/joystick_state.hpp>
 
 
 using namespace std::chrono_literals;
@@ -51,7 +50,8 @@ namespace arm_controller{
     : Node("main_arm_controller_component", options) {
         uint8_t ikko_servo_id = 0;
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
-        tip_state_tgt = _tip_state_origin;  // 初期位置
+        _controller_state = ControllerState::CTRL_HUMAN;
+        _requested_tip_state = _tip_state_origin;  // 初期位置
         _hand_is_open = false;  // ハンドが開いてるか
 
         // xy座標で動かす
@@ -63,23 +63,26 @@ namespace arm_controller{
             if(d_z > 0.0f)d_z = 1.0f;
             if(d_z < 0.0f)d_z = -1.0f;
 
-            auto next_tgt_tip_state = tip_state_tgt + TipState(d_x * 10.0f, d_y * 10.0f, d_z * 5.0f, d_theta * 2.0f * M_PI/ 180.0f);
-            auto next_tgt_arm_state = arm_ik(next_tgt_tip_state);
-            auto clipped_arm_state = clip_arm_state(next_tgt_arm_state);
-            if(clipped_arm_state == next_tgt_arm_state){  // TODO: verify
-                if(request_arm_state != next_tgt_arm_state) {
-                    request_arm_state = next_tgt_arm_state;
-                    tip_state_tgt = arm_fk(request_arm_state);
+            if(this->joy_state.get_button_1_indexed(7, true)) {
+                this->_controller_state = ControllerState::CTRL_AUTO;
+            }
+
+            TipState next_tip_state = _requested_tip_state + TipState(d_x * 10.0f, d_y * 10.0f, d_z * 5.0f, d_theta * 2.0f * M_PI / 180.0f);
+            ArmState next_arm_state = arm_ik(next_tip_state);
+            if(next_arm_state == clip_arm_state(next_arm_state)){  // TODO: verify
+                if(_requested_arm_state != next_arm_state) {
+                    _requested_arm_state = next_arm_state;
+                    _requested_tip_state = arm_fk(_requested_arm_state);
 
                     RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf",
-                                tip_state_tgt.x, tip_state_tgt.y, tip_state_tgt.z, tip_state_tgt.theta);
+                                _requested_tip_state.x, _requested_tip_state.y, _requested_tip_state.z, _requested_tip_state.theta);
                     RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf",
-                                request_arm_state.r, request_arm_state.theta, request_arm_state.z, request_arm_state.phi);
+                                _requested_arm_state.r, _requested_arm_state.theta, _requested_arm_state.z, _requested_arm_state.phi);
                 }
             }else{
                 RCLCPP_WARN(this->get_logger(), "Invalid input!");
             }
-            _send_request_arm_state(request_arm_state);
+            _send_request_arm_state(_requested_arm_state);
 
             // handの開閉
             if(this->joy_state.get_button_1_indexed(6, true)){
@@ -108,7 +111,7 @@ namespace arm_controller{
             if(this->joy_state.get_button_1_indexed(9, true)) {
                 RCLCPP_WARN(this->get_logger(), "[INFO] return to origin!");
                 _send_request_arm_state(clip_arm_state(arm_ik(this->_tip_state_origin)));
-                this->tip_state_tgt = this->_tip_state_origin;
+                this->_requested_tip_state = this->_tip_state_origin;
             }
         };
 
@@ -119,6 +122,7 @@ namespace arm_controller{
 
         _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
         _b3m_client = this->create_client<kondo_srv>("b3m_service");
+        _traj_client = this->create_client<traj_srv>("traj_service");
 
         while(!_b3m_client->wait_for_service(1s)){
             if(!rclcpp::ok()){
@@ -127,10 +131,19 @@ namespace arm_controller{
             }
             RCLCPP_WARN(this->get_logger(), "waiting for b3m service...");
         }
+        while(!_traj_client->wait_for_service(1s)){
+            if(!rclcpp::ok()){
+                RCLCPP_ERROR(this->get_logger(), "Client interrupted while waiting for service");
+                return;
+            }
+            RCLCPP_WARN(this->get_logger(), "waiting for traj service...");
+        }
 
         rclcpp::sleep_for(100ms);
         _b3m_init(wrist_servo_id);  // init b3m
         _b3m_init(ikko_servo_id);  // init b3m
+
+//        _timer_planner = this->create_wall_timer(30ms, timer_callback);
         RCLCPP_WARN(this->get_logger(), "[START] main_arm_controller");
     }
 

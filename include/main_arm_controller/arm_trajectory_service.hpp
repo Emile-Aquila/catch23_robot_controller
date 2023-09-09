@@ -14,7 +14,7 @@
 #include <main_arm_controller/visibility.hpp>
 #include <catch23_robot_controller/srv/arm_trajectory_srv.hpp>
 #include <catch23_robot_controller/msg/tip_state.hpp>
-#include <main_arm_controller/robot_state.hpp>
+#include <main_arm_controller/utils/robot_state.hpp>
 
 
 namespace arm_trajectory{
@@ -25,7 +25,6 @@ namespace arm_trajectory{
         ~ArmTrajectoryService();
     private:
         using arm_traj_srv = catch23_robot_controller::srv::ArmTrajectorySrv;
-        using tip_state_msg = catch23_robot_controller::msg::TipState;
         rclcpp::Service<arm_traj_srv>::SharedPtr arm_trajectory_service;
         void srv_callback(std::shared_ptr<arm_traj_srv::Request> request, std::shared_ptr<arm_traj_srv::Response> response);
     };

@@ -3,7 +3,12 @@
 //
 
 #include <main_arm_controller/trajectory/spline_utils.hpp>
-#include <main_arm_controller/robot_state.hpp>
+#include <main_arm_controller/utils/robot_state.hpp>
+
+
+
+template<class T>bool chmax(T &former, const T &b) { if (former<b) { former=b; return true; } return false; }
+template<class T>bool chmin(T &former, const T &b) { if (b<former) { former=b; return true; } return false; }
 
 
 void create_time_grid(std::vector<double>& T, double& tmin, double& tmax,
@@ -79,11 +84,12 @@ std::vector<ArmState> path_func(const std::vector<ArmState>& waypoints, double l
     spline_rs.set_points(times, rs, line_type);
     spline_thetas.set_points(times, thetas, line_type);
 
-    int n = 15;
+
+    int n = 2;
+    chmax(n, (int) ceil((t_max - t_min) / length));
     std::vector<ArmState> ans;
     for(int i=0; i<n; i++){
         double t = t_min + (double)i*(t_max - t_min)/((double)(n-1));
-//        std::cout << spline_thetas(t) <<" " << spline_rs(t)/100.0 << " 0.0"<< std::endl;
         double phi = phis[0] + (phis[phis.size()-1] - phis[0]) * (double)i / (double)(n-1);
         ans.emplace_back(spline_rs(t), spline_thetas(t), 0.0, phi);
     }

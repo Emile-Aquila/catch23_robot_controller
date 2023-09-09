@@ -48,9 +48,10 @@
 #include <fstream>
 #include <limits>
 
+#include <main_arm_controller/trajectory/r_theta_optimal_planning.hpp>
 #include <main_arm_controller/trajectory/spline.h>
 #include <main_arm_controller/trajectory/spline_utils.hpp>
-#include <main_arm_controller/robot_state.hpp>
+#include <main_arm_controller/utils/robot_state.hpp>
 
 
 namespace ob = ompl::base;
@@ -167,12 +168,7 @@ public:
     double clearance(const ob::State* state) const override{
         // 与えられた状態の位置から円形の障害物の境界までの距離を返す。
         auto [x, y, yaw] = FK(state);
-        std::cout<<x<<", "<<y<<std::endl;
         std::vector<XY> vertexes = rectangle_vertexes(hand_w, hand_h, x, y, yaw);
-        std::for_each(vertexes.begin(), vertexes.end(), [](auto& tmp){
-            auto [x, y] = tmp;
-            std::cout<<x<<", "<<y<<std::endl;
-        });
         double min_clearance = std::numeric_limits<double>::max();
         for(const auto& tmp: vertexes){
             chmin(min_clearance, _clearance_field_area(tmp));
@@ -268,7 +264,7 @@ matrix<double> interpolate_by_pos(std::vector<double> start, std::vector<double>
 
 
 
-void plan(double runTime, PlannerType plannerType){
+std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double length){
     auto state_space(std::make_shared<ob::RealVectorStateSpace>(3));
     matrix<double> bounds_pre{
             std::vector<double>{0.0, M_PI*2.0},
@@ -289,16 +285,16 @@ void plan(double runTime, PlannerType plannerType){
     space_info->setup();
 
     ob::ScopedState<> start(state_space);  // (theta, r, phi)
-//    auto start_tmp = IK_vec(0.325, 0.0, 0.0);
-    auto start_tmp = IK_vec(-0.325, 0.225, M_PI_4);
+//    auto start_tmp = IK_vec(-0.325, 0.225, M_PI_4);
+    auto start_tmp = IK_vec(start_tip.x, start_tip.y, start_tip.theta);
     std::cout<<start_tmp[0]<<", "<<start_tmp[1]<<", "<<start_tmp[2]<<std::endl;
     start->as<ob::RealVectorStateSpace::StateType>()->values[0] = start_tmp[0];
     start->as<ob::RealVectorStateSpace::StateType>()->values[1] = start_tmp[1];
     start->as<ob::RealVectorStateSpace::StateType>()->values[2] = start_tmp[2];
 
     ob::ScopedState<> goal(state_space);  // (1, 1, 1)
-//    auto goal_tmp = IK_vec(-0.55, 0.10, M_PI_4);
-    auto goal_tmp = IK_vec(0.4, 0.0, 0.0);
+//    auto goal_tmp = IK_vec(0.4, 0.0, 0.0);
+    auto goal_tmp = IK_vec(goal_tip.x, goal_tip.y, goal_tip.theta);
     std::cout<<goal_tmp[0]<<", "<<goal_tmp[1]<<", "<<goal_tmp[2]<<std::endl;
     goal->as<ob::RealVectorStateSpace::StateType>()->values[0] = goal_tmp[0];
     goal->as<ob::RealVectorStateSpace::StateType>()->values[1] = goal_tmp[1];
@@ -321,10 +317,12 @@ void plan(double runTime, PlannerType plannerType){
     ob::PlannerStatus solved = planner->ob::Planner::solve(0.5);  // 1.0秒以内に解こうとする
     if (!solved) {
         std::cout << "No solution found" << std::endl;
-        return;
+        return std::make_pair(std::vector<ArmState>{}, false);
     }
 
-    std::cout << "Found solution:" << std::endl;
+    auto path = std::static_pointer_cast<og::PathGeometric>(prob_def->getSolutionPath());
+    path->interpolate();
+
     std::ofstream writing_file;
     try{
         writing_file.open("path.txt");
@@ -332,27 +330,15 @@ void plan(double runTime, PlannerType plannerType){
         std::cerr << "can't open path.txt" << std::endl;
     }
 
-    auto path = std::static_pointer_cast<og::PathGeometric>(prob_def->getSolutionPath());
-    path->interpolate();
-//    path->interpolate(20);
-//    path->printAsMatrix(writing_file);
-//    path->printAsMatrix(std::cout);
-
     std::vector<ArmState> traj;
     for(auto& tmp: path->getStates()){
         auto *tmp2 = (*tmp).as<ob::RealVectorStateSpace::StateType>()->values;
         auto [theta, r, phi] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
         traj.emplace_back(r, theta, 0.0, phi);
     }
-    auto r_theta_trajectory = path_func(traj, 1.0);
+    auto r_theta_trajectory = path_func(traj, length);
     for(auto& tmp: r_theta_trajectory){
         writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
     }
-    writing_file.close();
-
-}
-
-
-int main(){
-    plan(1.0, PLANNER_RRTSTAR);
+    return std::make_pair(r_theta_trajectory, true);
 }
