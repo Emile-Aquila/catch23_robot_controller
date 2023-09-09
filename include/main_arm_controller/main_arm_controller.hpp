@@ -18,6 +18,7 @@
 #include <main_arm_controller/robot_state.hpp>
 #include <kondo_drivers/srv/kondo_b3m_srv.hpp>
 #include <main_arm_controller/joystick_state.hpp>
+#include <main_arm_controller/trajectory/spline_utils.hpp>
 
 
 namespace arm_controller{

@@ -10,6 +10,17 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()  # packageから自動でfind_packageしてくれる
 
+## required for ompl
+find_package(Boost REQUIRED)
+find_package(Boost COMPONENTS program_options REQUIRED)
+find_package(ompl REQUIRED)
+include_directories(
+        ${EIGEN_INCLUDE_DIR}
+        ${OMPL_INCLUDE_DIRS}
+        ${Boost_LIBRARIES}
+)
+
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -36,7 +47,8 @@ rosidl_generate_interfaces(
 
 
 ## Component Settings
-ament_auto_add_library(main_arm_controller_component SHARED src/main_arm_controller.cpp src/joystick_state.cpp src/robot_state.cpp)
+ament_auto_add_library(main_arm_controller_component SHARED src/main_arm_controller.cpp
+        src/joystick_state.cpp src/robot_state.cpp src/trajectory/spline_utils.cpp src/trajectory/r_theta_optimal_planning.cpp)
 rclcpp_components_register_nodes(main_arm_controller_component "arm_controller::ArmControllerNode")
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 target_link_libraries(main_arm_controller_component "${cpp_typesupport_target}")
