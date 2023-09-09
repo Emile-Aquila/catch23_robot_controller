@@ -15,10 +15,13 @@ class JoyStickState{
 private:
     std::vector<float> _axes;
     std::vector<int> _button_inputs;
+    std::vector<int> _button_inputs_pre;
 
 public:
+    JoyStickState();
     explicit JoyStickState(const sensor_msgs::msg::Joy &joy_msg);
-    bool get_button_1_indexed(int id);
+    void set(const sensor_msgs::msg::Joy &joy_msg);
+    bool get_button_1_indexed(int id, bool strictly_changed=false);
     std::pair<float, float> get_joystick_left_xy();
     std::pair<float, float> get_joystick_right_xy();
 };

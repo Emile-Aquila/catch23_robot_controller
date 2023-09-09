@@ -51,45 +51,14 @@ namespace arm_controller{
         uint8_t ikko_servo_id = 0;
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
         tip_state_tgt = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置
-
-        // r-thetaで動かす
-        auto joy_callback_r_theta = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
-            JoyStickState joy_state(msg);
-
-            auto [d_theta, d_r] = joy_state.get_joystick_left_xy();
-            auto [d_phi, d_z] = joy_state.get_joystick_right_xy();
-            request_arm_state = request_arm_state + ArmState(d_r * 10.0f, d_theta * 0.05f, d_z, d_phi);
-            clip_arm_state(request_arm_state);
-            tip_state_tgt = arm_fk(request_arm_state);
-
-            RCLCPP_INFO(this->get_logger(), "r,theta,z,phi: %lf, %lf, %lf, %lf",
-                        request_arm_state.r, request_arm_state.theta, request_arm_state.z, request_arm_state.phi);
-            RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %lf, %lf, %lf, %lf",
-                        tip_state_tgt.x, tip_state_tgt.y, tip_state_tgt.z, tip_state_tgt.theta);
-            _send_request_arm_state(request_arm_state);
-
-            if(joy_state.get_button_1_indexed(6)) {
-                _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 2, 0, true));
-            }else if(joy_state.get_button_1_indexed(8)){
-                _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 2, 0, false));
-            }
-
-            // B3M
-            if(joy_state.get_button_1_indexed(1)){
-                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(ikko_servo_id, 66.5f, 500));
-            }else if(joy_state.get_button_1_indexed(2)){
-                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(ikko_servo_id, 0.0f, 500));
-            }else if(joy_state.get_button_1_indexed(3)){
-                _pub_kondo->publish(this->_gen_b3m_set_pos_msg(ikko_servo_id, -66.5f, 500));
-            }
-        };
+        _hand_is_open = false;  // ハンドが開いてるか
 
         // xy座標で動かす
         auto joy_callback_xy = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
-            JoyStickState joy_state(msg);
+            this->joy_state.set(msg);
 
-            auto [d_x, d_y] = joy_state.get_joystick_left_xy();
-            auto [d_theta, d_z] = joy_state.get_joystick_right_xy();
+            auto [d_x, d_y] = this->joy_state.get_joystick_left_xy();
+            auto [d_theta, d_z] = this->joy_state.get_joystick_right_xy();
             if(d_z > 0.0f)d_z = 1.0f;
             if(d_z < 0.0f)d_z = -1.0f;
 
@@ -97,38 +66,63 @@ namespace arm_controller{
             auto next_tgt_arm_state = arm_ik(next_tgt_tip_state);
             auto clipped_arm_state = clip_arm_state(next_tgt_arm_state);
             if(clipped_arm_state == next_tgt_arm_state){  // TODO: verify
-                request_arm_state = next_tgt_arm_state;
-                tip_state_tgt = arm_fk(request_arm_state);
+                if(request_arm_state != next_tgt_arm_state) {
+                    request_arm_state = next_tgt_arm_state;
+                    tip_state_tgt = arm_fk(request_arm_state);
+
+                    RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf",
+                                tip_state_tgt.x, tip_state_tgt.y, tip_state_tgt.z, tip_state_tgt.theta);
+                    RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf",
+                                request_arm_state.r, request_arm_state.theta, request_arm_state.z, request_arm_state.phi);
+                }
+            }else{
+                RCLCPP_WARN(this->get_logger(), "Invalid input!");
+            }
+            _send_request_arm_state(request_arm_state);
+
+            // handの開閉
+            if(this->joy_state.get_button_1_indexed(6, true)){
+                if(this->_hand_is_open){
+                    this->_hand_is_open = false;
+                    this->_request_hand_open_close(true);  // handを閉じる
+                    RCLCPP_INFO(this->get_logger(), "[INFO] close hand!");
+                }else{
+                    this->_hand_is_open = true;
+                    this->_request_hand_open_close(false);  // handを開ける
+                    RCLCPP_INFO(this->get_logger(), "[INFO] open hand!");
+                }
             }
 
-            RCLCPP_INFO(this->get_logger(), "r,theta,z,phi: %lf, %lf, %lf, %lf",
-                        request_arm_state.r, request_arm_state.theta, request_arm_state.z, request_arm_state.phi);
-            RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %lf, %lf, %lf, %lf",
-                        tip_state_tgt.x, tip_state_tgt.y, tip_state_tgt.z, tip_state_tgt.theta);
-            _send_request_arm_state(request_arm_state);
-            if(joy_state.get_button_1_indexed(5)){
-                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 1, 0.0f, true));
-                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 0, 0.0f, true));
-                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 2, 0.0f, true));
-            }else if(joy_state.get_button_1_indexed(6)){
-                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 1, 0.0f, false));
-                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 0, 0.0f, false));
-                _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 2, 0.0f, false));
+            // 一個取り
+            if(this->joy_state.get_button_1_indexed(11, true)) {
+            }
+
+            // 妨害機構
+            if(this->joy_state.get_button_1_indexed(12, true)){
+
             }
         };
 
         joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 5, joy_callback_xy);
         _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 10);
-//        _pub_micro_ros_r = this->create_publisher<actuator_msg>("mros_input_r", 10);
-//        _pub_micro_ros_theta = this->create_publisher<actuator_msg>("mros_input_theta", 10);
         _pub_micro_ros_r = this->create_publisher<std_msgs::msg::Float32>("mros_input_r", 10);
         _pub_micro_ros_theta = this->create_publisher<std_msgs::msg::Float32>("mros_input_theta", 10);
 
-        _pub_kondo = this->create_publisher<kondo_msg>("kondo_b3m_topic", 10);
+        _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
+        _b3m_client = this->create_client<kondo_srv>("b3m_service");
+
+        while(!_b3m_client->wait_for_service(1s)){
+            if(!rclcpp::ok()){
+                RCLCPP_ERROR(this->get_logger(), "Client interrupted while waiting for service");
+                return;
+            }
+            RCLCPP_WARN(this->get_logger(), "waiting for b3m service...");
+        }
 
         rclcpp::sleep_for(100ms);
         _b3m_init(wrist_servo_id);  // init b3m
         _b3m_init(ikko_servo_id);  // init b3m
+        RCLCPP_WARN(this->get_logger(), "[START] main_arm_controller");
     }
 
     ArmControllerNode::~ArmControllerNode(){}
@@ -163,22 +157,20 @@ namespace arm_controller{
     }
 
     void ArmControllerNode::_b3m_init(uint8_t servo_id) {  // b3mのinit
-        _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 動作モードをfreeに
+        _pub_b3m->publish(_gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 動作モードをfreeに
         rclcpp::sleep_for(100ms);
-        _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 位置制御モードに
+        _pub_b3m->publish(_gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 位置制御モードに
         rclcpp::sleep_for(100ms);
-        _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x29)); // 軌道生成タイプ：Normal (最速で回転)
+        _pub_b3m->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x29)); // 軌道生成タイプ：Normal (最速で回転)
         rclcpp::sleep_for(100ms);
-        _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x5C)); // PIDの設定を位置制御のプリセットに合わせる
+        _pub_b3m->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x5C)); // PIDの設定を位置制御のプリセットに合わせる
         rclcpp::sleep_for(100ms);
-        _pub_kondo->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x28)); // 動作モードをNormalに
+        _pub_b3m->publish(_gen_b3m_write_msg(servo_id, 0x00, 0x28)); // 動作モードをNormalに
         rclcpp::sleep_for(100ms);
     }
 
     void ArmControllerNode::_send_request_arm_state(const ArmState &req_arm_state) {
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
-//        _pub_micro_ros_theta->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 1, req_arm_state.theta));
-//        _pub_micro_ros_r->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 0, 2, req_arm_state.r));
         std_msgs::msg::Float32 tgt_data;
         tgt_data.data = req_arm_state.r;
         _pub_micro_ros_r->publish(tgt_data);
@@ -186,7 +178,13 @@ namespace arm_controller{
         _pub_micro_ros_theta->publish(tgt_data);
 
         _pub_micro_ros->publish(_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, req_arm_state.z));
-        _pub_kondo->publish(_gen_b3m_set_pos_msg(wrist_servo_id, -rad_to_deg(req_arm_state.phi), 0));
+        _pub_b3m->publish(_gen_b3m_set_pos_msg(wrist_servo_id, -rad_to_deg(req_arm_state.phi), 0));
+    }
+
+    void ArmControllerNode::_request_hand_open_close(bool hand_close) {
+        _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 1, 0.0f, hand_close));
+        _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 0, 0.0f, hand_close));
+        _pub_micro_ros->publish(this->_gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 2, 0.0f, hand_close));
     }
 }
 
