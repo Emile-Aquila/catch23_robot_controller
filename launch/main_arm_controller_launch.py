@@ -112,6 +112,10 @@ def generate_launch_description():
                     name="kondo_b3m_service_component",
                 ),
                 ComposableNode(
+                    package='catch23_robot_controller',
+                    plugin='arm_trajectory::ArmTrajectoryService',
+                    name='traj_service'),
+                ComposableNode(
                     package='joy',
                     plugin='joy::Joy',
                     name='joy_node',
@@ -130,5 +134,6 @@ def generate_launch_description():
                     name='state_publisher_component'),
             ],
             output='both',
+            emulate_tty=True
         )
     ])

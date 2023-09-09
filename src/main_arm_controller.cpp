@@ -64,7 +64,16 @@ namespace arm_controller{
             if(d_z < 0.0f)d_z = -1.0f;
 
             if(this->joy_state.get_button_1_indexed(7, true)) {
-                this->_controller_state = ControllerState::CTRL_AUTO;
+                switch (this->_controller_state) {
+                    case ControllerState::CTRL_HUMAN:
+                        this->_controller_state = ControllerState::CTRL_AUTO;
+                        RCLCPP_WARN(this->get_logger(), "[INFO] -> CTRL_AUTO");
+                        break;
+                    case ControllerState::CTRL_AUTO:
+                        this->_controller_state = ControllerState::CTRL_HUMAN;
+                        RCLCPP_WARN(this->get_logger(), "[INFO] -> CTRL_HUMAN");
+                        break;
+                }
             }
 
             TipState next_tip_state = _requested_tip_state + TipState(d_x * 10.0f, d_y * 10.0f, d_z * 5.0f, d_theta * 2.0f * M_PI / 180.0f);
@@ -122,7 +131,7 @@ namespace arm_controller{
 
         _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
         _b3m_client = this->create_client<kondo_srv>("b3m_service");
-        _traj_client = this->create_client<traj_srv>("traj_service");
+        _traj_client = this->create_client<traj_srv>("arm_trajectory_service");
 
         while(!_b3m_client->wait_for_service(1s)){
             if(!rclcpp::ok()){
@@ -136,7 +145,7 @@ namespace arm_controller{
                 RCLCPP_ERROR(this->get_logger(), "Client interrupted while waiting for service");
                 return;
             }
-            RCLCPP_WARN(this->get_logger(), "waiting for traj service...");
+            RCLCPP_WARN(this->get_logger(), "waiting for arm_trajectory_service...");
         }
 
         rclcpp::sleep_for(100ms);

@@ -4,6 +4,7 @@
 
 #include <main_arm_controller/arm_trajectory_service.hpp>
 #include <catch23_robot_controller/msg/tip_state.hpp>
+#include <catch23_robot_controller/msg/arm_state.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <main_arm_controller/trajectory/r_theta_optimal_planning.hpp>

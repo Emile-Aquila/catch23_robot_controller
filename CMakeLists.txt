@@ -57,7 +57,7 @@ ament_auto_add_library(arm_trajectory_service_component SHARED src/arm_trajector
         src/utils/robot_state.cpp  src/trajectory/spline_utils.cpp src/trajectory/r_theta_optimal_planning.cpp)
 rclcpp_components_register_nodes(arm_trajectory_service_component "arm_trajectory::ArmTrajectoryService")
 #rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
-target_link_libraries(arm_trajectory_service_component "${cpp_typesupport_target}")
+target_link_libraries(arm_trajectory_service_component "${cpp_typesupport_target}" ${OMPL_LIBRARIES} ${Boost_LIBRARIES})
 
 
 ament_auto_add_library(c620_test SHARED src/c620_test.cpp)
