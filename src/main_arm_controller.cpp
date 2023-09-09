@@ -16,6 +16,7 @@
 #include <rclcpp/qos.hpp>
 #include <main_arm_controller/joystick_state.hpp>
 
+
 using namespace std::chrono_literals;
 using kondo_msg = kondo_drivers::msg::B3mServoMsg;
 
@@ -50,7 +51,7 @@ namespace arm_controller{
     : Node("main_arm_controller_component", options) {
         uint8_t ikko_servo_id = 0;
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
-        tip_state_tgt = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置
+        tip_state_tgt = _tip_state_origin;  // 初期位置
         _hand_is_open = false;  // ハンドが開いてるか
 
         // xy座標で動かす
@@ -95,11 +96,19 @@ namespace arm_controller{
 
             // 一個取り
             if(this->joy_state.get_button_1_indexed(11, true)) {
+                RCLCPP_INFO(this->get_logger(), "[INFO] ikkodori hand!");
             }
 
             // 妨害機構
             if(this->joy_state.get_button_1_indexed(12, true)){
 
+            }
+
+            // 原点に戻る
+            if(this->joy_state.get_button_1_indexed(9, true)) {
+                RCLCPP_WARN(this->get_logger(), "[INFO] return to origin!");
+                _send_request_arm_state(clip_arm_state(arm_ik(this->_tip_state_origin)));
+                this->tip_state_tgt = this->_tip_state_origin;
             }
         };
 

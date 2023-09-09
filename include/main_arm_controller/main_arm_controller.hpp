@@ -48,6 +48,8 @@ namespace arm_controller{
         ArmState request_arm_state;  // 送信するarmのstate
         JoyStickState joy_state;
         bool _hand_is_open;  // handの状態
+
+        const TipState _tip_state_origin = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置
     };
 }
 
