@@ -25,7 +25,7 @@ float clip_f(float value, float min_v, float max_v){
 
 const float min_r = 325.0f;
 const float max_r = 975.0f;
-const float min_theta = -M_PI / 2.0f;
+const float min_theta = -M_PI;
 const float max_theta = M_PI;
 
 
@@ -50,7 +50,6 @@ namespace arm_controller{
     : Node("main_arm_controller_component", options) {
         uint8_t ikko_servo_id = 0;
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
-        _controller_state = ControllerState::CTRL_HUMAN;
         _requested_tip_state = _tip_state_origin;  // 初期位置
         _hand_is_open = false;  // ハンドが開いてるか
 
@@ -66,30 +65,47 @@ namespace arm_controller{
             if(this->joy_state.get_button_1_indexed(7, true)) {
                 switch (this->_controller_state) {
                     case ControllerState::CTRL_HUMAN:
-                        this->_controller_state = ControllerState::CTRL_AUTO;
-                        RCLCPP_WARN(this->get_logger(), "[INFO] -> CTRL_AUTO");
+                        this->_change_controller_state(ControllerState::CTRL_BEFORE_FOLLOWING);
+                        RCLCPP_WARN(this->get_logger(), "[INFO] CTRL_HUMAN -> CTRL_AUTO");
                         break;
-                    case ControllerState::CTRL_AUTO:
-                        this->_controller_state = ControllerState::CTRL_HUMAN;
+                    case ControllerState::CTRL_BEFORE_FOLLOWING:
+                        RCLCPP_WARN(this->get_logger(), "[INFO] trajectory generating...");
+                        break;
+                    case ControllerState::CTRL_FOLLOWING:
+                        this->_change_controller_state(ControllerState::CTRL_HUMAN);
                         RCLCPP_WARN(this->get_logger(), "[INFO] -> CTRL_HUMAN");
                         break;
                 }
             }
 
-            TipState next_tip_state = _requested_tip_state + TipState(d_x * 10.0f, d_y * 10.0f, d_z * 5.0f, d_theta * 2.0f * M_PI / 180.0f);
-            ArmState next_arm_state = arm_ik(next_tip_state);
-            if(next_arm_state == clip_arm_state(next_arm_state)){  // TODO: verify
-                if(_requested_arm_state != next_arm_state) {
-                    _requested_arm_state = next_arm_state;
-                    _requested_tip_state = arm_fk(_requested_arm_state);
+            if(this->_controller_state == ControllerState::CTRL_HUMAN) {
+                TipState next_tip_state = _requested_tip_state + TipState(d_x * 10.0f, d_y * 10.0f, d_z * 5.0f, d_theta * 2.0f * M_PI / 180.0f);
+                ArmState next_arm_state = arm_ik(next_tip_state);
+                if (next_arm_state == clip_arm_state(next_arm_state)) {  // TODO: verify
+                    if (_requested_arm_state != next_arm_state) {
+                        _requested_arm_state = next_arm_state;
+                        _requested_tip_state = arm_fk(_requested_arm_state);
 
-                    RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf",
-                                _requested_tip_state.x, _requested_tip_state.y, _requested_tip_state.z, _requested_tip_state.theta);
-                    RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf",
-                                _requested_arm_state.r, _requested_arm_state.theta, _requested_arm_state.z, _requested_arm_state.phi);
+                        RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf",
+                                    _requested_tip_state.x, _requested_tip_state.y, _requested_tip_state.z,
+                                    _requested_tip_state.theta);
+                        RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf",
+                                    _requested_arm_state.r, _requested_arm_state.theta, _requested_arm_state.z,
+                                    _requested_arm_state.phi);
+                    }
+                } else {
+                    RCLCPP_WARN(this->get_logger(), "Invalid input!");
                 }
+            }else if(this->_controller_state == ControllerState::CTRL_BEFORE_FOLLOWING){
+                RCLCPP_WARN(this->get_logger(), "generating trajectory ...");
             }else{
-                RCLCPP_WARN(this->get_logger(), "Invalid input!");
+                if(_trajectory.size() > _trajectory_front_id) {
+                    _requested_arm_state = _trajectory[_trajectory_front_id];
+                    _requested_tip_state = arm_fk(_requested_arm_state);
+                    _trajectory_front_id += 1;
+                }else{
+                    this->_change_controller_state(ControllerState::CTRL_HUMAN);
+                };
             }
             _send_request_arm_state(_requested_arm_state);
 
@@ -152,11 +168,59 @@ namespace arm_controller{
         _b3m_init(wrist_servo_id);  // init b3m
         _b3m_init(ikko_servo_id);  // init b3m
 
-//        _timer_planner = this->create_wall_timer(30ms, timer_callback);
+        _timer_planner = this->create_wall_timer(30ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
         RCLCPP_WARN(this->get_logger(), "[START] main_arm_controller");
     }
 
     ArmControllerNode::~ArmControllerNode(){}
+
+    void ArmControllerNode::_trajectory_timer_callback(){
+        if(this->_controller_state == ControllerState::CTRL_HUMAN)return;
+        if(this->_controller_state == ControllerState::CTRL_BEFORE_FOLLOWING){
+            auto request = std::make_shared<traj_srv::Request>();
+            TipState start = _tip_state_origin;
+            TipState end = TipState(-325.0, 225.0, 0.0, 0.0);
+            request->waypoints.emplace_back(convert_tip_state(start));
+            request->waypoints.emplace_back(convert_tip_state(end));
+
+            auto future_res = _traj_client->async_send_request(request,
+                                                               std::bind(&ArmControllerNode::_traj_future_callback, this, std::placeholders::_1));
+        }
+    }
+
+    void ArmControllerNode::_traj_future_callback(rclcpp::Client<traj_srv>::SharedFuture future){
+        _trajectory.clear();
+        _trajectory_front_id = 0;
+        if(future.get()->is_feasible){
+            auto ans_path = future.get() -> trajectory;
+            std::transform(ans_path.begin(), ans_path.end(), std::back_inserter(_trajectory), [this](const auto& tmp){
+                ArmState arm_state = convert_arm_state(tmp);
+                if(clip_arm_state(arm_state) != arm_state){
+                    RCLCPP_WARN(this->get_logger(), "%lf, %lf, %lf", arm_state.r, arm_state.theta, arm_state.phi);
+                    RCLCPP_ERROR(this->get_logger(), "[ERROR] trajectory clipped!");
+                }
+                return clip_arm_state(arm_state);
+            });
+
+            _change_controller_state(ControllerState::CTRL_FOLLOWING);
+            RCLCPP_INFO(this->get_logger(), "[INFO] trajectory generated!");
+        }else{
+            _change_controller_state(ControllerState::CTRL_HUMAN);
+            RCLCPP_ERROR(this->get_logger(), "[ERROR] generated trajectory is invalid!");
+        }
+    }
+
+    bool ArmControllerNode::_change_controller_state(ControllerState next_state){
+        if(next_state == ControllerState::CTRL_BEFORE_FOLLOWING){
+            _trajectory.clear();
+            _trajectory_front_id = 0;
+        }else if(_controller_state == ControllerState::CTRL_FOLLOWING && next_state == ControllerState::CTRL_HUMAN){
+            _trajectory.clear();
+            _trajectory_front_id = 0;
+        }
+        _controller_state = next_state;
+        return true;
+    }
 
     actuator_msgs::msg::ActuatorMsg ArmControllerNode::_gen_actuator_msg(uint8_t node_type, uint8_t node_id, uint8_t device_id, float target_value, bool air_target){
         actuator_msg target_data;

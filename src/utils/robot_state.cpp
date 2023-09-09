@@ -48,4 +48,5 @@ catch23_robot_controller::msg::ArmState convert_arm_state(const ArmState &arm_st
     ans.theta = arm_state.theta;
     ans.phi = arm_state.phi;
     ans.z = arm_state.z;
+    return ans;
 }

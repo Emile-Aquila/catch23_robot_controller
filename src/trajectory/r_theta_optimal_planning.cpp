@@ -149,12 +149,12 @@ std::vector<XY> rectangle_vertexes(double w, double h, double x, double y, doubl
 
 class ValidityCheckerRobotArea : public ob::StateValidityChecker{  // state spaceのvalidity checker
     ob::SpaceInformationPtr space_info;
-    double hand_h = 0.39;
-    double hand_w = 0.058 * 2.0;
+    double hand_h = 390;
+    double hand_w = 58.0 * 2.0;
 
-    double max_field_x = 1005.0 / 2.0 / 1000.0;
-    double max_field_y_up = 680.0 / 1000.0;
-    double min_field_y_lw = -1045.0 / 1000.0;
+    double max_field_x = 1005.0 / 2.0 ;
+    double max_field_y_up = 680.0 ;
+    double min_field_y_lw = -1045.0 ;
 
     double _clearance_field_area(const XY& vertex) const{
         auto [x,y] = vertex;
@@ -268,7 +268,7 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     auto state_space(std::make_shared<ob::RealVectorStateSpace>(3));
     matrix<double> bounds_pre{
             std::vector<double>{0.0, M_PI*2.0},
-            std::vector<double>{0.325, 0.975},
+            std::vector<double>{325.0, 975.0},
             std::vector<double>{-M_PI, M_PI},
     };
 

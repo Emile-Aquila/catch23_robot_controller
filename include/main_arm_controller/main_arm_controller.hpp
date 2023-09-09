@@ -8,6 +8,7 @@
 #include <functional>
 #include <algorithm>
 #include <chrono>
+#include <queue>
 #include <memory>
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
@@ -23,7 +24,8 @@
 
 enum class ControllerState{
     CTRL_HUMAN,
-    CTRL_AUTO,
+    CTRL_BEFORE_FOLLOWING,  // パス生成前
+    CTRL_FOLLOWING,  // パスが生成されて、追従を始めたあと
 };
 
 namespace arm_controller{
@@ -38,12 +40,16 @@ namespace arm_controller{
         using actuator_msg = actuator_msgs::msg::ActuatorMsg;
         using traj_srv = catch23_robot_controller::srv::ArmTrajectorySrv;
 
+        void _trajectory_timer_callback();
+        void _traj_future_callback(rclcpp::Client<traj_srv>::SharedFuture future);  // callback for async_send_request
+
         actuator_msg _gen_actuator_msg(uint8_t node_type, uint8_t node_id, uint8_t device_id, float target_value, bool air_target=false);
         kondo_msg _gen_b3m_set_pos_msg(uint8_t servo_id, float target_pos, uint16_t move_time=0);
         kondo_msg _gen_b3m_write_msg(uint8_t servo_id, uint8_t TxData, uint8_t address);
         void _send_request_arm_state(const ArmState& req_arm_state);
         void _b3m_init(uint8_t servo_id);
         void _request_hand_open_close(bool hand_close);
+        bool _change_controller_state(ControllerState next_state);
 
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
@@ -53,10 +59,13 @@ namespace arm_controller{
         rclcpp::Client<traj_srv>::SharedPtr _traj_client;
         rclcpp::TimerBase::SharedPtr _timer_planner;
 
-        ControllerState _controller_state;
+        ControllerState _controller_state = ControllerState::CTRL_HUMAN;
         TipState _requested_tip_state;  // main armの目標位置
         ArmState _requested_arm_state;  // 送信するarmのstate
         JoyStickState joy_state;
+
+        std::vector<ArmState> _trajectory;
+        size_t _trajectory_front_id = 0;
         bool _hand_is_open;  // handの状態
 
         const TipState _tip_state_origin = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置
