@@ -47,7 +47,9 @@ rosidl_generate_interfaces(
 
 
 ## Component Settings
-ament_auto_add_library(main_arm_controller_component SHARED src/main_arm_controller.cpp src/utils/joystick_state.cpp src/utils/robot_state.cpp)
+ament_auto_add_library(main_arm_controller_component SHARED
+        src/main_arm_controller.cpp src/utils/joystick_state.cpp src/utils/system_classes.cpp
+        src/utils/robot_state.cpp src/utils/util_functions.cpp)
 rclcpp_components_register_nodes(main_arm_controller_component "arm_controller::ArmControllerNode")
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 target_link_libraries(main_arm_controller_component "${cpp_typesupport_target}")

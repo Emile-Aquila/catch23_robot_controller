@@ -8,8 +8,10 @@
 #include <functional>
 #include <algorithm>
 #include <chrono>
+#include <iterator>
 #include <queue>
 #include <memory>
+#include <vector>
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "sensor_msgs/msg/joy.hpp"
@@ -20,13 +22,10 @@
 #include <kondo_drivers/srv/kondo_b3m_srv.hpp>
 #include <catch23_robot_controller/srv/arm_trajectory_srv.hpp>
 #include <main_arm_controller/utils/joystick_state.hpp>
+#include <rclcpp/client.hpp>
+#include <rclcpp/logger.hpp>
+#include <main_arm_controller/utils/system_classes.hpp>
 
-
-enum class ControllerState{
-    CTRL_HUMAN,
-    CTRL_BEFORE_FOLLOWING,  // パス生成前
-    CTRL_FOLLOWING,  // パスが生成されて、追従を始めたあと
-};
 
 namespace arm_controller{
     class ArmControllerNode : public rclcpp::Node {
@@ -40,16 +39,16 @@ namespace arm_controller{
         using actuator_msg = actuator_msgs::msg::ActuatorMsg;
         using traj_srv = catch23_robot_controller::srv::ArmTrajectorySrv;
 
+        // trajectory
         void _trajectory_timer_callback();
-        void _traj_future_callback(rclcpp::Client<traj_srv>::SharedFuture future);  // callback for async_send_request
+        void _traj_service_future_callback(rclcpp::Client<traj_srv>::SharedFuture future);  // callback for async_send_request
 
-        actuator_msg _gen_actuator_msg(uint8_t node_type, uint8_t node_id, uint8_t device_id, float target_value, bool air_target=false);
-        kondo_msg _gen_b3m_set_pos_msg(uint8_t servo_id, float target_pos, uint16_t move_time=0);
-        kondo_msg _gen_b3m_write_msg(uint8_t servo_id, uint8_t TxData, uint8_t address);
+        // main-arm state
         void _send_request_arm_state(const ArmState& req_arm_state);
-        void _b3m_init(uint8_t servo_id);
         void _request_hand_open_close(bool hand_close);
         bool _change_controller_state(ControllerState next_state);
+
+        void _b3m_init(uint8_t servo_id);
 
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
@@ -60,13 +59,10 @@ namespace arm_controller{
         rclcpp::TimerBase::SharedPtr _timer_planner;
 
         ControllerState _controller_state = ControllerState::CTRL_HUMAN;
-        TipState _requested_tip_state;  // main armの目標位置
-        ArmState _requested_arm_state;  // 送信するarmのstate
+        MainArmState _requested_state;
         JoyStickState joy_state;
-
-        std::vector<ArmState> _trajectory;
-        size_t _trajectory_front_id = 0;
-        bool _hand_is_open;  // handの状態
+        TrajectoryData _trajectory_data;
+        bool _is_traj_requested = false;
 
         const TipState _tip_state_origin = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置
     };

@@ -85,8 +85,9 @@ std::vector<ArmState> path_func(const std::vector<ArmState>& waypoints, double l
     spline_thetas.set_points(times, thetas, line_type);
 
 
-    int n = 2;
+    int n = 30;
     chmax(n, (int) ceil((t_max - t_min) / length));
+    std::cout << "t_range: " << t_max - t_min << std::endl;
     std::vector<ArmState> ans;
     for(int i=0; i<n; i++){
         double t = t_min + (double)i*(t_max - t_min)/((double)(n-1));

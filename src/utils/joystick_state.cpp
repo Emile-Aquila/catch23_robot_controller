@@ -31,12 +31,10 @@ std::pair<float, float> JoyStickState::get_joystick_left_xy() {
     if(_axes[4] != 0.0)x = -_axes[4];
     if(_axes[5] != 0.0)y = _axes[5];
     return std::make_pair(x, y);  // elecom
-//    return std::make_pair(-_axes[0], _axes[1]);  // logicool
 }
 
 std::pair<float, float> JoyStickState::get_joystick_right_xy() {
     return std::make_pair(-_axes[3], _axes[2]);  // elecom
-//    return std::make_pair(_axes[2], _axes[3]);  // logicool
 }
 
 void JoyStickState::set(const sensor_msgs::msg::Joy &joy_msg) {

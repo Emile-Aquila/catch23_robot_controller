@@ -305,8 +305,8 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     prob_def->setStartAndGoalStates(start, goal);
     prob_def->setOptimizationObjective(getBalancedObjective1(space_info));  // 目的関数の設定
 
-    space_info->printSettings(std::cout);
-    prob_def->print(std::cout);  // 問題設定を表示
+//    space_info->printSettings(std::cout);
+//    prob_def->print(std::cout);  // 問題設定を表示
 
 
     auto planner = allocatePlanner(space_info, PLANNER_INF_RRTSTAR);
@@ -314,7 +314,7 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     planner->setup();  // plannerのsetup
 
 
-    ob::PlannerStatus solved = planner->ob::Planner::solve(0.5);  // 1.0秒以内に解こうとする
+    ob::PlannerStatus solved = planner->ob::Planner::solve(0.5);
     if (!solved) {
         std::cout << "No solution found" << std::endl;
         return std::make_pair(std::vector<ArmState>{}, false);
