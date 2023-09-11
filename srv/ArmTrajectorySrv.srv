@@ -1,4 +1,5 @@
 TipState[] waypoints
+float32 step_length
 ---
 ArmState[] trajectory
 bool is_feasible

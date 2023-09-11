@@ -177,6 +177,7 @@ namespace arm_controller{
             TipState end = TipState(-325.0, 225.0, 0.0, 0.0);
             request->waypoints.emplace_back(convert_tip_state(start));
             request->waypoints.emplace_back(convert_tip_state(end));
+            request->step_length = 20.0;
 
             auto future_res = _traj_client->async_send_request(
                     request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));

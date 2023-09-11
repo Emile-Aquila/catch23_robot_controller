@@ -119,7 +119,6 @@ std::vector<ArmState> path_func_xy(const std::vector<ArmState>& waypoints, doubl
 
     int n = 2;
     chmax(n, (int) ceil((t_max - t_min) / length));
-    std::cout<< "t_range: " << t_max - t_min << std::endl;
     std::vector<ArmState> ans;
     for(int i=0; i<n; i++){
         double t = t_min + (double)i*(t_max - t_min)/((double)(n-1));
