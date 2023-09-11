@@ -323,12 +323,12 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     auto path = std::static_pointer_cast<og::PathGeometric>(prob_def->getSolutionPath());
     path->interpolate();
 
-    std::ofstream writing_file;
-    try{
-        writing_file.open("path.txt");
-    }catch(const std::exception& e){
-        std::cerr << "can't open path.txt" << std::endl;
-    }
+//    std::ofstream writing_file;
+//    try{
+//        writing_file.open("path.txt");
+//    }catch(const std::exception& e){
+//        std::cerr << "can't open path.txt" << std::endl;
+//    }
 
     std::vector<ArmState> traj;
     for(auto& tmp: path->getStates()){
@@ -336,9 +336,9 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
         auto [theta, r, phi] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
         traj.emplace_back(r, theta, 0.0, phi);
     }
-    auto r_theta_trajectory = path_func(traj, length);
-    for(auto& tmp: r_theta_trajectory){
-        writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
-    }
+    auto r_theta_trajectory = path_func_xy(traj, length);
+//    for(auto& tmp: r_theta_trajectory){
+//        writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
+//    }
     return std::make_pair(r_theta_trajectory, true);
 }

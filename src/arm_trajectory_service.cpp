@@ -20,14 +20,14 @@ namespace arm_trajectory{
 
     }
 
-    void ArmTrajectoryService::srv_callback(std::shared_ptr<arm_traj_srv::Request> request,
-                                            std::shared_ptr<arm_traj_srv::Response> response) {
+    void ArmTrajectoryService::srv_callback(const std::shared_ptr<arm_traj_srv::Request> request,
+                                            const std::shared_ptr<arm_traj_srv::Response> response) {
         if(request->waypoints.size() != 2){
             response->is_feasible = false;
             response->trajectory.clear();
             return;
         }
-        auto [traj, is_feasible] = plan(convert_tip_state(request->waypoints[0]), convert_tip_state(request->waypoints[1]), 15.0f);
+        auto [traj, is_feasible] = plan(convert_tip_state(request->waypoints[0]), convert_tip_state(request->waypoints[1]), 20.0f);
         if(!is_feasible){
             response->is_feasible = is_feasible;
             response->trajectory.clear();

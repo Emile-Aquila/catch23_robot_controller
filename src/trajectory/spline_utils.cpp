@@ -96,3 +96,37 @@ std::vector<ArmState> path_func(const std::vector<ArmState>& waypoints, double l
     }
     return ans;
 }
+
+std::vector<ArmState> path_func_xy(const std::vector<ArmState>& waypoints, double length){
+    // states -> rs, thetas
+    std::vector<double> xs, ys, thetas;
+    std::for_each(waypoints.begin(), waypoints.end(),[&xs, &thetas, &ys](auto& tmp){
+        auto tmp_tip = arm_fk(tmp);
+        xs.emplace_back(tmp_tip.x);
+        ys.emplace_back(tmp_tip.y);
+        thetas.emplace_back(tmp_tip.theta);
+    });
+
+    // parametric spline
+    tk::spline::spline_type line_type = tk::spline::cspline;
+    double t_min = 0.0, t_max = 0.0;
+    std::vector<double> times; // parameter
+    create_time_grid(times, t_min, t_max, xs, ys, false);
+
+    tk::spline spline_xs, spline_ys;
+    spline_xs.set_points(times, xs, line_type);
+    spline_ys.set_points(times, ys, line_type);
+
+    int n = 2;
+    chmax(n, (int) ceil((t_max - t_min) / length));
+    std::cout<< "t_range: " << t_max - t_min << std::endl;
+    std::vector<ArmState> ans;
+    for(int i=0; i<n; i++){
+        double t = t_min + (double)i*(t_max - t_min)/((double)(n-1));
+        double theta = thetas[0] + (thetas[thetas.size()-1] - thetas[0]) * (double)i / (double)(n-1);
+        ans.emplace_back(arm_ik(TipState(spline_xs(t), spline_ys(t), 0.0, theta)));
+    }
+    return ans;
+}
+
+

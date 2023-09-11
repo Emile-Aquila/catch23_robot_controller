@@ -54,27 +54,30 @@ namespace arm_controller{
             if(d_z > 0.0f)d_z = 1.0f;
             if(d_z < 0.0f)d_z = -1.0f;
 
-            if(this->joy_state.get_button_1_indexed(7, true)) {
+            if(this->joy_state.get_button_1_indexed(7, true)) { // 自動動作モードへの切り替えボタン
                 switch (this->_controller_state) {
                     case ControllerState::CTRL_HUMAN:
-                        this->_change_controller_state(ControllerState::CTRL_BEFORE_FOLLOWING);
+                        this->_change_controller_state(ControllerState::CTRL_BEFORE_GENERATING);
                         RCLCPP_WARN(this->get_logger(), "[INFO] CTRL_HUMAN -> CTRL_AUTO");
                         break;
-                    case ControllerState::CTRL_BEFORE_FOLLOWING:
+                    case ControllerState::CTRL_BEFORE_GENERATING:
+                        break;
+                    case ControllerState::CTRL_GENERATING:
                         RCLCPP_WARN(this->get_logger(), "[INFO] trajectory generating...");
                         break;
                     case ControllerState::CTRL_FOLLOWING:
                         this->_change_controller_state(ControllerState::CTRL_HUMAN);
                         RCLCPP_WARN(this->get_logger(), "[INFO] -> CTRL_HUMAN");
                         break;
+
                 }
             }
 
             if(this->_controller_state == ControllerState::CTRL_HUMAN) {
-                TipState next_tip_state = this->_requested_state.tip_state() + TipState(d_x * 10.0f, d_y * 10.0f, d_z * 5.0f, d_theta * 2.0f * M_PI / 180.0f);
+                TipState next_tip_state = this->_requested_state.tip_state() + TipState(d_x * 15.0f, d_y * 15.0f, d_z * 4.5f, d_theta * 2.0f * M_PI / 180.0f);
                 ArmState next_arm_state = arm_ik(next_tip_state);
                 if (next_arm_state == clip_arm_state(next_arm_state) && (abs(next_arm_state.theta- this->_requested_state.arm_state().theta) <= M_PI)) {
-                    if (this->_requested_state.arm_state() != next_arm_state) {
+                    if (d_x != 0.0 || d_y != 0.0 || d_z != 0.0 || d_theta != 0.0) {
                         this->_requested_state.set_state(next_arm_state);
 
                         RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf",
@@ -85,14 +88,17 @@ namespace arm_controller{
                 } else {
                     RCLCPP_WARN(this->get_logger(), "Invalid input!");
                 }
-            }else if(this->_controller_state == ControllerState::CTRL_BEFORE_FOLLOWING){
-                RCLCPP_WARN(this->get_logger(), "generating trajectory ...");
-            }else{
-                if(!(this->_trajectory_data.complete())) {
+            }else if(this->_controller_state == ControllerState::CTRL_GENERATING) {
+                // no action
+            }else if(this->_controller_state == ControllerState::CTRL_BEFORE_GENERATING) {
+                // no action
+            }else if(this->_controller_state == ControllerState::CTRL_FOLLOWING){
+                RCLCPP_INFO(this->get_logger(), "[INFO] path following...");
+                if(!(this->_trajectory_data.complete())) {  // 経路追従
                     this->_requested_state.set_state(this->_trajectory_data.get_front());
                 }else{
                     this->_change_controller_state(ControllerState::CTRL_HUMAN);
-                };
+                }
             }
             _send_request_arm_state(this->_requested_state.arm_state());
 
@@ -118,7 +124,6 @@ namespace arm_controller{
 
             // 妨害機構
             if(this->joy_state.get_button_1_indexed(12, true)){
-
             }
 
             // 原点に戻る
@@ -129,10 +134,11 @@ namespace arm_controller{
             }
         };
 
+
         joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 10, joy_callback_xy);
-        _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 10);
-        _pub_micro_ros_r = this->create_publisher<std_msgs::msg::Float32>("mros_input_r", 10);
-        _pub_micro_ros_theta = this->create_publisher<std_msgs::msg::Float32>("mros_input_theta", 10);
+        _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 5);
+        _pub_micro_ros_r = this->create_publisher<std_msgs::msg::Float32>("mros_input_r", 5);
+        _pub_micro_ros_theta = this->create_publisher<std_msgs::msg::Float32>("mros_input_theta", 5);
 
         _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
         _b3m_client = this->create_client<kondo_srv>("b3m_service");
@@ -157,7 +163,7 @@ namespace arm_controller{
         _b3m_init(wrist_servo_id);  // init b3m
         _b3m_init(ikko_servo_id);  // init b3m
 
-        _timer_planner = this->create_wall_timer(20ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
+        _timer_planner = this->create_wall_timer(30ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
         RCLCPP_WARN(this->get_logger(), "[START] main_arm_controller");
     }
 
@@ -165,22 +171,21 @@ namespace arm_controller{
 
     void ArmControllerNode::_trajectory_timer_callback(){
         if(this->_controller_state == ControllerState::CTRL_HUMAN)return;
-        if(this->_controller_state == ControllerState::CTRL_BEFORE_FOLLOWING){
+        if(this->_controller_state == ControllerState::CTRL_BEFORE_GENERATING){
             auto request = std::make_shared<traj_srv::Request>();
             TipState start = _tip_state_origin;
             TipState end = TipState(-325.0, 225.0, 0.0, 0.0);
             request->waypoints.emplace_back(convert_tip_state(start));
             request->waypoints.emplace_back(convert_tip_state(end));
 
-            if(!this->_is_traj_requested){
-                this->_is_traj_requested = true;
-                auto future_res = _traj_client->async_send_request(
-                        request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));
-            }
+            auto future_res = _traj_client->async_send_request(
+                    request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));
+            // TODO: serviceのthreadを分ける必要がある
+            this->_change_controller_state(ControllerState::CTRL_GENERATING);
         }
     }
 
-    void ArmControllerNode::_traj_service_future_callback(rclcpp::Client<traj_srv>::SharedFuture future){
+    void ArmControllerNode::_traj_service_future_callback(const rclcpp::Client<traj_srv>::SharedFuture future){
         if(future.get()->is_feasible){
             auto ans_path = future.get() -> trajectory;
             std::vector<ArmState> tmp_traj;
@@ -193,18 +198,16 @@ namespace arm_controller{
                 return clip_arm_state(arm_state);
             });
             _trajectory_data.set(tmp_traj);
+            RCLCPP_INFO(this->get_logger(), "[INFO] trajectory generated!!");
             _change_controller_state(ControllerState::CTRL_FOLLOWING);
-            RCLCPP_INFO(this->get_logger(), "[INFO] trajectory generated!");
         }else{
-            _change_controller_state(ControllerState::CTRL_HUMAN);
             RCLCPP_ERROR(this->get_logger(), "[ERROR] generated trajectory is invalid!");
+            _change_controller_state(ControllerState::CTRL_HUMAN);
         }
     }
 
     bool ArmControllerNode::_change_controller_state(ControllerState next_state){
-        if(next_state == ControllerState::CTRL_BEFORE_FOLLOWING){
-            _is_traj_requested = false;
-        }else if(_controller_state == ControllerState::CTRL_FOLLOWING && next_state == ControllerState::CTRL_HUMAN){
+        if(_controller_state == ControllerState::CTRL_FOLLOWING && next_state == ControllerState::CTRL_HUMAN){
             _trajectory_data.clear();
         }
         _controller_state = next_state;

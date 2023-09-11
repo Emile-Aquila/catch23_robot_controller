@@ -26,7 +26,7 @@ namespace arm_trajectory{
     private:
         using arm_traj_srv = catch23_robot_controller::srv::ArmTrajectorySrv;
         rclcpp::Service<arm_traj_srv>::SharedPtr arm_trajectory_service;
-        void srv_callback(std::shared_ptr<arm_traj_srv::Request> request, std::shared_ptr<arm_traj_srv::Response> response);
+        void srv_callback(const std::shared_ptr<arm_traj_srv::Request> request, const std::shared_ptr<arm_traj_srv::Response> response);
     };
 }
 

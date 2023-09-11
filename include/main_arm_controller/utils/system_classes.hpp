@@ -19,7 +19,8 @@
 
 enum class ControllerState{
     CTRL_HUMAN,
-    CTRL_BEFORE_FOLLOWING,  // パス生成前
+    CTRL_BEFORE_GENERATING,  // パス生成前
+    CTRL_GENERATING,  // パス生成中
     CTRL_FOLLOWING,  // パスが生成されて、追従を始めたあと
 };
 

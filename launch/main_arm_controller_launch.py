@@ -111,10 +111,10 @@ def generate_launch_description():
                     plugin="kondo_drivers::KondoB3mDriverService",
                     name="kondo_b3m_service_component",
                 ),
-                ComposableNode(
-                    package='catch23_robot_controller',
-                    plugin='arm_trajectory::ArmTrajectoryService',
-                    name='traj_service'),
+                # ComposableNode(
+                #     package='catch23_robot_controller',
+                #     plugin='arm_trajectory::ArmTrajectoryService',
+                #     name='traj_service'),
                 ComposableNode(
                     package='joy',
                     plugin='joy::Joy',
@@ -132,6 +132,20 @@ def generate_launch_description():
                     package='catch23_robot_controller',
                     plugin='arm_controller::StatePublisherNode',
                     name='state_publisher_component'),
+            ],
+            output='both',
+            emulate_tty=True
+        ),
+        ComposableNodeContainer(
+            name='service_component',
+            namespace='',
+            package='rclcpp_components',
+            executable='component_container',
+            composable_node_descriptions=[
+                ComposableNode(
+                    package='catch23_robot_controller',
+                    plugin='arm_trajectory::ArmTrajectoryService',
+                    name='traj_service'),
             ],
             output='both',
             emulate_tty=True

@@ -41,14 +41,13 @@ namespace arm_controller{
 
         // trajectory
         void _trajectory_timer_callback();
-        void _traj_service_future_callback(rclcpp::Client<traj_srv>::SharedFuture future);  // callback for async_send_request
+        void _traj_service_future_callback(const rclcpp::Client<traj_srv>::SharedFuture future);  // callback for async_send_request
 
         // main-arm state
+        void _b3m_init(uint8_t servo_id);
         void _send_request_arm_state(const ArmState& req_arm_state);
         void _request_hand_open_close(bool hand_close);
         bool _change_controller_state(ControllerState next_state);
-
-        void _b3m_init(uint8_t servo_id);
 
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
@@ -62,7 +61,6 @@ namespace arm_controller{
         MainArmState _requested_state;
         JoyStickState joy_state;
         TrajectoryData _trajectory_data;
-        bool _is_traj_requested = false;
 
         const TipState _tip_state_origin = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置
     };
