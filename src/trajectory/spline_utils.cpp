@@ -7,10 +7,6 @@
 #include <main_arm_controller/utils/util_functions.hpp>
 
 
-template<class T>bool chmax(T &former, const T &b) { if (former<b) { former=b; return true; } return false; }
-template<class T>bool chmin(T &former, const T &b) { if (b<former) { former=b; return true; } return false; }
-
-
 void create_time_grid(std::vector<double>& T, double& tmin, double& tmax,
                       std::vector<double>& X, std::vector<double>& Y, bool is_closed_curve){
     assert(X.size()==Y.size() && X.size()>2);

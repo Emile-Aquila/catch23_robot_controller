@@ -23,23 +23,12 @@
 
 // For boost program options
 #include <boost/program_options.hpp>
-// For string comparison (boost::iequals)
-#include <boost/algorithm/string.hpp>
-// For std::make_shared
 #include <memory>
 #include <fstream>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
-
-#include <ompl/control/SpaceInformation.h>
 #include <ompl/base/goals/GoalState.h>
-#include <ompl/base/spaces/SE2StateSpace.h>
-#include <ompl/control/spaces/RealVectorControlSpace.h>
-#include <ompl/control/planners/kpiece/KPIECE1.h>
-#include <ompl/control/planners/rrt/RRT.h>
-#include <ompl/control/planners/est/EST.h>
-#include <ompl/control/planners/syclop/SyclopRRT.h>
-#include <ompl/control/planners/syclop/SyclopEST.h>
-#include <ompl/control/planners/pdst/PDST.h>
+
+
 #include <ompl/control/planners/syclop/GridDecomposition.h>
 #include <ompl/control/SimpleSetup.h>
 #include <ompl/config.h>
@@ -54,25 +43,9 @@
 #include <main_arm_controller/utils/robot_state.hpp>
 #include <main_arm_controller/utils/util_functions.hpp>
 
-namespace ob = ompl::base;
-namespace og = ompl::geometric;
-namespace oc = ompl::control;
+
 template<class T> using matrix= std::vector<std::vector<T>>;
 
-template<class T>bool chmax(T &former, const T &b) { if (former<b) { former=b; return true; } return false; }
-template<class T>bool chmin(T &former, const T &b) { if (b<former) { former=b; return true; } return false; }
-
-enum PlannerType{
-    PLANNER_AITSTAR,
-    PLANNER_BFMTSTAR,
-    PLANNER_BITSTAR,
-    PLANNER_CFOREST,
-    PLANNER_FMTSTAR,
-    PLANNER_INF_RRTSTAR,
-    PLANNER_PRMSTAR,
-    PLANNER_RRTSTAR,
-    PLANNER_SORRTSTAR,
-};
 
 ob::PlannerPtr allocatePlanner(ob::SpaceInformationPtr space_info, PlannerType plannerType){
     switch (plannerType){
@@ -120,19 +93,7 @@ std::tuple<double, double, double> FK(const ob::State* state){  // r, theta, phi
     return std::make_tuple(r*cos(theta), r*sin(theta), theta+phi);
 }
 
-std::tuple<double, double, double> IK(double x, double y, double yaw){
-    double theta = atan2(y, x);
-    double r = sqrt(pow(x, 2.0)+pow(y, 2.0));
-    return std::make_tuple(theta, r, yaw-theta);
-}
 
-std::vector<double> IK_vec(double x, double y, double yaw){
-    double theta = atan2(y, x);
-    double r = sqrt(pow(x, 2.0)+pow(y, 2.0));
-    return std::vector<double>{theta, r, yaw-theta};
-}
-
-using XY = std::tuple<double, double>;
 XY rot2D(XY xy, double theta){
     auto [x, y] = xy;
     return std::make_tuple(x * cos(theta) - y * sin(theta), x * sin(theta) + y * cos(theta));
@@ -141,93 +102,82 @@ XY operator+ (const XY& a, const XY& b){
     return {std::get<0>(a) + std::get<0>(b), std::get<1>(a) + std::get<1>(b)};
 }
 
+
+
 std::vector<XY> rectangle_vertexes(double w, double h, double x, double y, double theta){
     std::vector<XY> tmp = {{w/2.0, h/2.0}, {-w/2.0, h/2.0}, {-w/2.0, -h/2.0}, {w/2.0, -h/2.0}};
     std::for_each(tmp.begin(), tmp.end(), [theta, x, y](auto& point){ point = rot2D(point, theta)+XY(x, y);});
     return tmp;
 }
 
-class ValidityCheckerRobotArea : public ob::StateValidityChecker{  // state spaceのvalidity checker
-    ob::SpaceInformationPtr space_info;
-    double hand_h = 390;
-    double hand_w = 58.0 * 2.0;
 
-//    double max_field_x = 1005.0 / 2.0 ;
-    double max_field_x = 1500.0 / 2.0 ;
-    double max_field_y_up = 680.0 ;
-    double min_field_y_lw = -1045.0 ;
+ValidityCheckerRobotArea::ValidityCheckerRobotArea(const ob::SpaceInformationPtr& space_info_): ob::StateValidityChecker(space_info_){
+    space_info = space_info_;
+}
 
-    double _clearance_field_area(const XY& vertex) const{
-        auto [x,y] = vertex;
-        return std::min({max_field_x - abs(x), max_field_y_up - y, y - min_field_y_lw});
-    }
-public:
-    explicit ValidityCheckerRobotArea(const ob::SpaceInformationPtr& space_info_): ob::StateValidityChecker(space_info_){
-        space_info = space_info_;
-    }
 
-    double clearance(const ob::State* state) const override{
-        // 与えられた状態の位置から円形の障害物の境界までの距離を返す。
-        auto [x, y, yaw] = FK(state);
-        std::vector<XY> vertexes = rectangle_vertexes(hand_w, hand_h, x, y, yaw);
-        double min_clearance = std::numeric_limits<double>::max();
-        for(const auto& tmp: vertexes){
-            chmin(min_clearance, _clearance_field_area(tmp));
-        }
-        return min_clearance;
+double ValidityCheckerRobotArea::_clearance_field_area(const XY& vertex) const {
+    auto [x,y] = vertex;
+    return std::min({max_field_x - abs(x), max_field_y_up - y, y - min_field_y_lw});
+}
+
+double ValidityCheckerRobotArea::clearance(const ob::State* state) const {
+    // 与えられた状態の位置から円形の障害物の境界までの距離を返す。
+    auto [x, y, yaw] = FK(state);
+    std::vector<XY> vertexes = rectangle_vertexes(hand_w, hand_h, x, y, yaw);
+    double min_clearance = std::numeric_limits<double>::max();
+    for (const auto &tmp: vertexes) {
+        chmin(min_clearance, _clearance_field_area(tmp));
     }
+    return min_clearance;
+}
 
     // 与えられた状態の位置が円形の障害物に重なっているかどうかを返す。
-    bool isValid(const ob::State* state) const override{
-        return this->clearance(state) > 0.0 && this->space_info->satisfiesBounds(state);
-    }
-};
+bool ValidityCheckerRobotArea::isValid(const ob::State* state) const {
+    return this->clearance(state) > 0.0 && this->space_info->satisfiesBounds(state);
+}
 
 
 
 
-class ClearanceObjective : public ob::StateCostIntegralObjective{
-public:
-    ClearanceObjective(const ob::SpaceInformationPtr& space_info) :
-            ob::StateCostIntegralObjective(space_info, true){
-    }
 
-    ob::Cost stateCost(const ob::State* s) const override{
-        // 障害物との距離を最大化する
-        return ob::Cost(log(1 / (si_->getStateValidityChecker()->clearance(s) + std::numeric_limits<double>::min())));
-    }
-};
 
-class TipPathObjective : public ob::StateCostIntegralObjective{
-public:
-    TipPathObjective(const ob::SpaceInformationPtr& space_info) :
-        ob::StateCostIntegralObjective(space_info, true){}
+ClearanceObjective::ClearanceObjective(const ob::SpaceInformationPtr& space_info)
+    :ob::StateCostIntegralObjective(space_info, true){
+}
 
-    ob::Cost motionCost(const ob::State* s1, const ob::State* s2) const override{
-        auto[x1, y1, yaw1] = FK(s1);
-        auto[x2, y2, yaw2] = FK(s2);
-        return ob::Cost(sqrt(pow(x2-x1/1000, 2.0) + pow(y2-y1/1000, 2.0)));
-    }
-};
+ob::Cost ClearanceObjective::stateCost(const ob::State* s) const {
+    // 障害物との距離を最大化する
+    return ob::Cost(log(1 / (si_->getStateValidityChecker()->clearance(s) + std::numeric_limits<double>::min())));
+}
 
-class ParamLengthObjective : public ob::StateCostIntegralObjective{
-private:
-    double d_theta = 0.1;
-    double d_r = 1000.0;
-    double d_phi = 0.2;
 
-public:
-    ParamLengthObjective(const ob::SpaceInformationPtr& space_info) :
-            ob::StateCostIntegralObjective(space_info, true){}
 
-    ob::Cost motionCost(const ob::State* s1, const ob::State* s2) const override{
-        const auto *tmp = s1->as<ob::RealVectorStateSpace::StateType>()->values;
-        auto [theta, r, phi] = std::make_tuple(tmp[0], tmp[1], tmp[2]);
-        const auto *tmp2 = s2->as<ob::RealVectorStateSpace::StateType>()->values;
-        auto [theta2, r2, phi2] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
-        return ob::Cost(abs(theta2-theta)/d_theta + abs(r2-r)/d_r + abs(phi2-phi)/d_phi);
-    }
-};
+
+
+TipPathObjective::TipPathObjective(const ob::SpaceInformationPtr& space_info)
+    :ob::StateCostIntegralObjective(space_info, true){};
+
+ob::Cost TipPathObjective::motionCost(const ob::State* s1, const ob::State* s2) const {
+    auto [x1, y1, yaw1] = FK(s1);
+    auto [x2, y2, yaw2] = FK(s2);
+    return ob::Cost(sqrt(pow(x2 - x1 / 1000, 2.0) + pow(y2 - y1 / 1000, 2.0)));
+}
+
+
+
+
+ParamLengthObjective::ParamLengthObjective(const ob::SpaceInformationPtr& space_info) :
+    ob::StateCostIntegralObjective(space_info, true){}
+
+ob::Cost ParamLengthObjective::motionCost(const ob::State* s1, const ob::State* s2) const {
+    const auto *tmp = s1->as<ob::RealVectorStateSpace::StateType>()->values;
+    auto [theta, r, phi] = std::make_tuple(tmp[0], tmp[1], tmp[2]);
+    const auto *tmp2 = s2->as<ob::RealVectorStateSpace::StateType>()->values;
+    auto [theta2, r2, phi2] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
+    return ob::Cost(abs(theta2 - theta) / d_theta + abs(r2 - r) / d_r + abs(phi2 - phi) / d_phi);
+}
+
 
 
 ob::OptimizationObjectivePtr getBalancedObjective1(const ob::SpaceInformationPtr& si){
@@ -251,17 +201,7 @@ ob::OptimizationObjectivePtr getBalancedObjective1(const ob::SpaceInformationPtr
 }
 
 
-matrix<double> interpolate_by_pos(std::vector<double> start, std::vector<double> goal, int num){
-    if(num < 2)num = 2;
-    double dx = (goal[0]-start[0])/(double)(num-1);
-    double dy = (goal[1]-start[1])/(double)(num-1);
-    double d_yaw = (goal[2]-start[2])/(double)(num-1);
-    matrix<double> ans(num);
-    for(int i=0; i<num; i++){
-        ans[i] = IK_vec(start[0]+dx*(double)i, start[1]+dy*(double)i, start[2]+d_yaw*(double)i);
-    }
-    return ans;
-}
+
 
 
 
@@ -280,7 +220,7 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     }
     state_space->setBounds(bounds);  // bounds for param
 
-    auto space_info(std::make_shared<ob::SpaceInformation>(state_space));
+    std::shared_ptr<ompl::base::SpaceInformation> space_info(std::make_shared<ob::SpaceInformation>(state_space));
     space_info->setStateValidityChecker(std::make_shared<ValidityCheckerRobotArea>(space_info));
     space_info->setup();
 
@@ -341,10 +281,8 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     auto traj_pre = path_func(traj, 0.7);
     auto r_theta_trajectory = path_func_xy(traj_pre, l_min, l_max, d_max);
     for(auto& tmp: r_theta_trajectory){
-//    for(auto& tmp: traj){
         writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
     }
     writing_file.close();
     return std::make_pair(r_theta_trajectory, true);
-//    return std::make_pair(traj, true);
 }

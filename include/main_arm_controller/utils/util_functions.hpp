@@ -8,6 +8,9 @@
 #include <kondo_drivers/msg/b3m_servo_msg.hpp>
 #include <actuator_msgs/msg/actuator_msg.hpp>
 
+template<class T>bool chmax(T &former, const T &b) { if (former<b) { former=b; return true; } return false; }
+template<class T>bool chmin(T &former, const T &b) { if (b<former) { former=b; return true; } return false; }
+
 float clip_f(float value, float min_v, float max_v);
 float rad_to_deg(float rad);
 float deg_to_rad(float deg);
