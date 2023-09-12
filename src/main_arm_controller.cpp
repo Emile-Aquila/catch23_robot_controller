@@ -183,7 +183,9 @@ namespace arm_controller{
             for(auto& tmp: this->_traj_target_points){
                 request->waypoints.emplace_back(convert_tip_state(tmp));
             }
-            request->step_length = 20.0;
+            request->step_min = 10.0f;
+            request->step_max = 70.0f;
+            request->d_step_max = 10.0f;
 
             auto future_res = _traj_client->async_send_request(
                     request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));
@@ -199,7 +201,7 @@ namespace arm_controller{
             std::transform(ans_path.begin(), ans_path.end(), std::back_inserter(tmp_traj), [this](const auto& tmp){
                 ArmState arm_state = convert_arm_state(tmp);
                 if(clip_arm_state(arm_state) != arm_state){
-                    RCLCPP_ERROR(this->get_logger(), "[ERROR] trajectory clipped! : (%lf, %lf, %lf)", arm_state.r, arm_state.theta, arm_state.phi);
+                    RCLCPP_WARN(this->get_logger(), "[WARN] trajectory clipped! : (%lf, %lf, %lf)", arm_state.r, arm_state.theta, arm_state.phi);
                 }
                 return clip_arm_state(arm_state);
             });

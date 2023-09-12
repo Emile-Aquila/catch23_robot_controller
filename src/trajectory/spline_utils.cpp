@@ -4,7 +4,7 @@
 
 #include <main_arm_controller/trajectory/spline_utils.hpp>
 #include <main_arm_controller/utils/robot_state.hpp>
-
+#include <main_arm_controller/utils/util_functions.hpp>
 
 
 template<class T>bool chmax(T &former, const T &b) { if (former<b) { former=b; return true; } return false; }
@@ -97,7 +97,7 @@ std::vector<ArmState> path_func(const std::vector<ArmState>& waypoints, double l
     return ans;
 }
 
-std::vector<ArmState> path_func_xy(const std::vector<ArmState>& waypoints, double length){
+std::vector<ArmState> path_func_xy(const std::vector<ArmState>& waypoints, double l_min, double l_max, double d_max){
     // states -> rs, thetas
     std::vector<double> xs, ys, thetas;
     std::for_each(waypoints.begin(), waypoints.end(),[&xs, &thetas, &ys](auto& tmp){
@@ -116,15 +116,52 @@ std::vector<ArmState> path_func_xy(const std::vector<ArmState>& waypoints, doubl
     tk::spline spline_xs, spline_ys;
     spline_xs.set_points(times, xs, line_type);
     spline_ys.set_points(times, ys, line_type);
+    double t_range = t_max - t_min;  // tのrange
+    std::cout << "t_range: " << t_range << std::endl;
 
-    int n = 2;
-    chmax(n, (int) ceil((t_max - t_min) / length));
     std::vector<ArmState> ans;
-    for(int i=0; i<n; i++){
-        double t = t_min + (double)i*(t_max - t_min)/((double)(n-1));
-        double theta = thetas[0] + (thetas[thetas.size()-1] - thetas[0]) * (double)i / (double)(n-1);
-        ans.emplace_back(arm_ik(TipState(spline_xs(t), spline_ys(t), 0.0, theta)));
+    if(t_range <= (4.0 * l_min)){
+        int n = 2;
+        chmax(n, (int) ceil((t_max - t_min) / l_min));
+        for(int i=0; i<n; i++){
+            double t = t_min + (double)i*(t_max - t_min)/((double)(n-1));
+            double theta = thetas[0] + (thetas[thetas.size()-1] - thetas[0]) * (double)i / (double)(n-1);
+            ans.emplace_back(arm_ik(TipState(spline_xs(t), spline_ys(t), 0.0, theta)));
+        }
+    }else {
+        auto f_calc_d = [t_range, l_min, l_max, d_max](int n) {
+            double d = (l_max - l_min) / (double)(n);
+            int m = std::max(0, (int)floor((t_range - 2.0 * l_min * (double) n - d * (double) (n * (n - 1))) / l_max));
+            double d_ans = (t_range - l_max * (double) m - l_min * 2.0 * (double) n) / (double) (n * (n - 1));
+            return d_ans;
+        };
+        std::function<bool(int)> d_is_feasible = [l_min, l_max, d_max, f_calc_d](int n) {
+            if(n<=0)return false;
+            return f_calc_d(n) <= d_max;
+        };
+        int n = binary_search(1, (int) ceil(t_range / l_min), d_is_feasible);
+        double d = f_calc_d(n);
+        double d_for_m = (l_max - l_min) / (double)(n);
+        int m = std::max(0, (int)floor((t_range - 2.0 * l_min * (double) n - d_for_m * (double) (n * (n - 1))) / l_max));
+        std::cout << "m,n,d: " << m <<", " << n << ", " << d <<", " << d_for_m << std::endl;
+        double t = t_min;
+        for(int i=0; i<(2*n+m); i++){
+            double dt;
+            if(i<n){
+                dt = l_min + d * (double)i;
+            }else if(i >= n+m){
+                dt = l_min + d * (double)(2*n+m-1 - i);
+            }else{
+                dt = l_min + d_for_m * (n);
+            }
+            t += dt;
+            double theta = thetas[0] + (thetas[thetas.size()-1] - thetas[0]) * (t-t_min) / t_range;
+            ans.emplace_back(arm_ik(TipState(spline_xs(t), spline_ys(t), 0.0, theta)));
+        }
+        std::cout << "[DEBUG] PLANNING --> t_max, t: " << t_max << "," << t << "," << ans.size() << std::endl;
     }
+
+    ans[ans.size()-1] = waypoints[waypoints.size()-1];
     return ans;
 }
 

@@ -28,7 +28,8 @@ namespace arm_trajectory{
             return;
         }
         RCLCPP_WARN(this->get_logger(), "way1 theta -> %lf", request->waypoints[0].theta);
-        auto [traj, is_feasible] = plan(convert_tip_state(request->waypoints[0]), convert_tip_state(request->waypoints[1]), request->step_length);
+        auto [traj, is_feasible] = plan(convert_tip_state(request->waypoints[0]),
+                                        convert_tip_state(request->waypoints[1]), request->step_min, request->step_max, request->d_step_max);
         if(!is_feasible){
             response->is_feasible = is_feasible;
             response->trajectory.clear();

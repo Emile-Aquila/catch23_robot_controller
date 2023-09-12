@@ -56,3 +56,19 @@ kondo_drivers::msg::B3mServoMsg gen_b3m_write_msg(uint8_t servo_id, uint8_t TxDa
     return ans;
 }
 
+int binary_search(int n_min, int n_max, std::function<bool(int)> f) {  // fはleftでfalse, rightでtrue
+    int left = n_min-1;  // 常に f(left) = false
+    int right = n_max; // 常に f(right) = true
+
+    while (right - left > 1) {  // meguru
+        int mid = left + (right - left) / 2;
+
+        if (f(mid)){
+            right = mid;
+        } else {
+            left = mid;
+        }
+    }
+    return right; // left は条件を満たさない最大の値、right は条件を満たす最小の値になる
+}
+

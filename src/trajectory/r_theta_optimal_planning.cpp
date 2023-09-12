@@ -265,7 +265,7 @@ matrix<double> interpolate_by_pos(std::vector<double> start, std::vector<double>
 
 
 
-std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double length){
+std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double l_min, double l_max, double d_max){
     auto state_space(std::make_shared<ob::RealVectorStateSpace>(3));
     matrix<double> bounds_pre{
             std::vector<double>{-M_PI_2, M_PI*2.0+ deg_to_rad(10.0)}, // theta
@@ -339,7 +339,7 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
         traj.emplace_back(r, theta, 0.0, phi);
     }
     auto traj_pre = path_func(traj, 0.7);
-    auto r_theta_trajectory = path_func_xy(traj_pre, length);
+    auto r_theta_trajectory = path_func_xy(traj_pre, l_min, l_max, d_max);
     for(auto& tmp: r_theta_trajectory){
 //    for(auto& tmp: traj){
         writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;

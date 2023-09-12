@@ -16,7 +16,7 @@
 void create_time_grid(std::vector<double>& T, double& tmin, double& tmax,
                       std::vector<double>& X, std::vector<double>& Y, bool is_closed_curve);
 std::vector<ArmState> path_func(const std::vector<ArmState>& waypoints, double length);
-std::vector<ArmState> path_func_xy(const std::vector<ArmState>& waypoints, double length);
+std::vector<ArmState> path_func_xy(const std::vector<ArmState>& waypoints, double l_min, double l_max, double d_max);
 
 
 #endif //OMPL_TEST_SPLINE_UTILS_HPP

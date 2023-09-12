@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double length);
+std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double l_min, double l_max, double d_max);
 // is_feasible (trueなら問題ない)
 
 #endif //ROS2_WS_R_THETA_OPTIMAL_PLANNING_HPP
