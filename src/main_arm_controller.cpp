@@ -57,7 +57,7 @@ namespace arm_controller{
             if(this->joy_state.get_button_1_indexed(7, true)) { // 自動動作モードへの切り替えボタン
                 switch (this->_controller_state) {
                     case ControllerState::CTRL_HUMAN:
-                        this->_traj_target_points = {this->_tip_state_origin, TipState(-325.0, 225.0, 0.0, M_PI/4.0f)};
+                        this->_traj_target_points = {this->_tip_state_origin, TipState(-325.0, 225.0, 0.0, M_PI/4.0f + M_PI_2)};
                         this->_change_controller_state(ControllerState::CTRL_BEFORE_GENERATING);
                         RCLCPP_WARN(this->get_logger(), "[INFO] CTRL_HUMAN -> CTRL_AUTO");
                         break;
@@ -130,6 +130,10 @@ namespace arm_controller{
             if(this->joy_state.get_button_1_indexed(9, true)) {
                 RCLCPP_WARN(this->get_logger(), "[INFO] return to origin!");
                 if(this->_requested_state.tip_state() != this->_tip_state_origin) {
+                    auto tmp_point = arm_ik(this->_requested_state.tip_state());
+
+                    std::cout << "test: start trajectory -> theta, phi: " << tmp_point.theta << ", " << tmp_point.phi << std::endl;
+
                     _traj_target_points = {this->_requested_state.tip_state(), this->_tip_state_origin};
                     this->_change_controller_state(ControllerState::CTRL_BEFORE_GENERATING);
                 }
@@ -199,6 +203,7 @@ namespace arm_controller{
                 }
                 return clip_arm_state(arm_state);
             });
+            std::cout << "test: terminate trajectory -> theta, phi: " << tmp_traj[tmp_traj.size()-1].theta << ", " << tmp_traj[tmp_traj.size() - 1].phi << std::endl;
             _trajectory_data.set(tmp_traj);
             RCLCPP_INFO(this->get_logger(), "[INFO] trajectory generated!!");
             _change_controller_state(ControllerState::CTRL_FOLLOWING);

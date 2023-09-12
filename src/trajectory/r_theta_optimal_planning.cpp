@@ -268,8 +268,8 @@ matrix<double> interpolate_by_pos(std::vector<double> start, std::vector<double>
 std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double length){
     auto state_space(std::make_shared<ob::RealVectorStateSpace>(3));
     matrix<double> bounds_pre{
-            std::vector<double>{0.0, M_PI*2.0},
-            std::vector<double>{325.0, 975.0},
+            std::vector<double>{0.0, M_PI*2.0}, // theta
+            std::vector<double>{325.0, 975.0},  // r
             std::vector<double>{-M_PI, M_PI},
     };
 
@@ -280,28 +280,27 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     }
     state_space->setBounds(bounds);  // bounds for param
 
-
     auto space_info(std::make_shared<ob::SpaceInformation>(state_space));
     space_info->setStateValidityChecker(std::make_shared<ValidityCheckerRobotArea>(space_info));
     space_info->setup();
 
+    // start point
     ob::ScopedState<> start(state_space);  // (theta, r, phi)
-//    auto start_tmp = IK_vec(-0.325, 0.225, M_PI_4);
-    auto start_tmp = IK_vec(start_tip.x, start_tip.y, convert_angle_in_pi(start_tip.theta));
-    std::cout<<start_tmp[0]<<", "<<start_tmp[1]<<", "<<start_tmp[2]<<std::endl;
-    start->as<ob::RealVectorStateSpace::StateType>()->values[0] = start_tmp[0];
-    start->as<ob::RealVectorStateSpace::StateType>()->values[1] = start_tmp[1];
-    start->as<ob::RealVectorStateSpace::StateType>()->values[2] = start_tmp[2];
+    ArmState start_tmp = arm_ik(start_tip);
+    std::cout<<"start: r,theta,phi -> " << start_tmp.r <<", "<< start_tmp.theta <<", "<< start_tmp.phi <<std::endl;
+    start->as<ob::RealVectorStateSpace::StateType>()->values[0] = start_tmp.theta;
+    start->as<ob::RealVectorStateSpace::StateType>()->values[1] = start_tmp.r;
+    start->as<ob::RealVectorStateSpace::StateType>()->values[2] = start_tmp.phi;
 
+    // goal point
     ob::ScopedState<> goal(state_space);  // (1, 1, 1)
-//    auto goal_tmp = IK_vec(0.4, 0.0, 0.0);
-    auto goal_tmp = IK_vec(goal_tip.x, goal_tip.y, convert_angle_in_pi(goal_tip.theta));
-    std::cout<<goal_tmp[0]<<", "<<goal_tmp[1]<<", "<<goal_tmp[2]<<std::endl;
-    goal->as<ob::RealVectorStateSpace::StateType>()->values[0] = goal_tmp[0];
-    goal->as<ob::RealVectorStateSpace::StateType>()->values[1] = goal_tmp[1];
-    goal->as<ob::RealVectorStateSpace::StateType>()->values[2] = goal_tmp[2];
+    ArmState goal_tmp = arm_ik(goal_tip);
+    std::cout<<"goal: r,theta,phi -> " << goal_tmp.r <<", "<< goal_tmp.theta <<", "<< goal_tmp.phi <<std::endl;
+    goal->as<ob::RealVectorStateSpace::StateType>()->values[0] = goal_tmp.theta;
+    goal->as<ob::RealVectorStateSpace::StateType>()->values[1] = goal_tmp.r;
+    goal->as<ob::RealVectorStateSpace::StateType>()->values[2] = goal_tmp.phi;
 
-
+    // problem definition
     auto prob_def(std::make_shared<ob::ProblemDefinition>(space_info));  // problem instance
     prob_def->setStartAndGoalStates(start, goal);
     prob_def->setOptimizationObjective(getBalancedObjective1(space_info));  // 目的関数の設定
