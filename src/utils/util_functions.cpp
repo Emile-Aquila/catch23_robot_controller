@@ -12,10 +12,18 @@ float clip_f(float value, float min_v, float max_v){
     return std::min(max_v, std::max(min_v, value));
 }
 
+float rad_to_deg(float rad){
+    return (float)(rad / M_PI * 180.0);
+}
 
+float deg_to_rad(float deg) {
+    return (float)(deg / 180.0 * M_PI);
+}
 
-float rad_to_deg(const float& rad){
-    return (float)(rad / M_PI * 180.0f);
+float convert_angle_in_pi(float angle_rad) {
+    while(angle_rad >= M_PI)angle_rad -= 2.0*M_PI;
+    while(angle_rad < -M_PI)angle_rad += 2.0*M_PI;
+    return angle_rad;
 }
 
 
@@ -47,3 +55,4 @@ kondo_drivers::msg::B3mServoMsg gen_b3m_write_msg(uint8_t servo_id, uint8_t TxDa
     ans.cmd_write.address = address;
     return ans;
 }
+

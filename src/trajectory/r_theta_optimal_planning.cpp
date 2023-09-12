@@ -52,7 +52,7 @@
 #include <main_arm_controller/trajectory/spline.h>
 #include <main_arm_controller/trajectory/spline_utils.hpp>
 #include <main_arm_controller/utils/robot_state.hpp>
-
+#include <main_arm_controller/utils/util_functions.hpp>
 
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
@@ -152,7 +152,8 @@ class ValidityCheckerRobotArea : public ob::StateValidityChecker{  // state spac
     double hand_h = 390;
     double hand_w = 58.0 * 2.0;
 
-    double max_field_x = 1005.0 / 2.0 ;
+//    double max_field_x = 1005.0 / 2.0 ;
+    double max_field_x = 1500.0 / 2.0 ;
     double max_field_y_up = 680.0 ;
     double min_field_y_lw = -1045.0 ;
 
@@ -286,7 +287,7 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
 
     ob::ScopedState<> start(state_space);  // (theta, r, phi)
 //    auto start_tmp = IK_vec(-0.325, 0.225, M_PI_4);
-    auto start_tmp = IK_vec(start_tip.x, start_tip.y, start_tip.theta);
+    auto start_tmp = IK_vec(start_tip.x, start_tip.y, convert_angle_in_pi(start_tip.theta));
     std::cout<<start_tmp[0]<<", "<<start_tmp[1]<<", "<<start_tmp[2]<<std::endl;
     start->as<ob::RealVectorStateSpace::StateType>()->values[0] = start_tmp[0];
     start->as<ob::RealVectorStateSpace::StateType>()->values[1] = start_tmp[1];
@@ -294,7 +295,7 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
 
     ob::ScopedState<> goal(state_space);  // (1, 1, 1)
 //    auto goal_tmp = IK_vec(0.4, 0.0, 0.0);
-    auto goal_tmp = IK_vec(goal_tip.x, goal_tip.y, goal_tip.theta);
+    auto goal_tmp = IK_vec(goal_tip.x, goal_tip.y, convert_angle_in_pi(goal_tip.theta));
     std::cout<<goal_tmp[0]<<", "<<goal_tmp[1]<<", "<<goal_tmp[2]<<std::endl;
     goal->as<ob::RealVectorStateSpace::StateType>()->values[0] = goal_tmp[0];
     goal->as<ob::RealVectorStateSpace::StateType>()->values[1] = goal_tmp[1];
@@ -314,14 +315,16 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     planner->setup();  // plannerのsetup
 
 
-    ob::PlannerStatus solved = planner->ob::Planner::solve(0.5);
+    ob::PlannerStatus solved = planner->ob::Planner::solve(0.4);
     if (!solved) {
         std::cout << "No solution found" << std::endl;
         return std::make_pair(std::vector<ArmState>{}, false);
     }
 
     auto path = std::static_pointer_cast<og::PathGeometric>(prob_def->getSolutionPath());
-    path->interpolate();
+    if(path->getStates().size() <= 2){  // スプライン補間は3点以上必要
+        path->interpolate(3);
+    }
 
     std::ofstream writing_file;
     try{
@@ -336,7 +339,8 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
         auto [theta, r, phi] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
         traj.emplace_back(r, theta, 0.0, phi);
     }
-    auto r_theta_trajectory = path_func_xy(traj, length);
+    auto traj_pre = path_func(traj, 10.0);
+    auto r_theta_trajectory = path_func_xy(traj_pre, length);
     for(auto& tmp: r_theta_trajectory){
         writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
     }

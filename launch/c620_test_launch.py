@@ -28,8 +28,8 @@ def generate_launch_description():
                     name='joy_node',
                     parameters=[{
                         'dev': joy_dev,
-                        'deadzone': 0.3,
-                        'autorepeat_rate': 20.0,
+                        'deadzone': 0.2,
+                        'autorepeat_rate': 30.0,
                     }]),
                 ComposableNode(
                     package='catch23_robot_controller',
@@ -41,5 +41,6 @@ def generate_launch_description():
                     name='state_publisher_component'),
             ],
             output='both',
+            emulate_tty=True
         )
     ])

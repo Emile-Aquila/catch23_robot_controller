@@ -14,7 +14,7 @@
 #include "std_msgs/msg/float32.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "main_arm_controller/visibility.hpp"
-#include <kondo_drivers/msg/b3m_servo_msg.hpp>
+#include <main_arm_controller/utils/joystick_state.hpp>
 #include <actuator_msgs/msg/actuator_msg.hpp>
 
 
@@ -25,18 +25,16 @@ namespace arm_controller{
         explicit C620Test(const rclcpp::NodeOptions & options);
         ~C620Test();
     private:
-        using kondo_msg = kondo_drivers::msg::B3mServoMsg;
         using actuator_msg = actuator_msgs::msg::ActuatorMsg;
 
         void timer_callback();
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::TimerBase::SharedPtr timer_;
-        rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros, _pub_micro_ros_r, _pub_micro_ros_theta;
-        bool flag_r = false;
-        bool flag_r_pre = false;
+        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr _pub_micro_ros_r, _pub_micro_ros_theta;
+        rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
+        JoyStickState _joy_state;
 
-        bool flag_theta = false;
-        bool flag_theta_pre = false;
+        float target_r, target_theta;
     };
 }
 

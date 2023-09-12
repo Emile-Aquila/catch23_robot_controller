@@ -32,7 +32,7 @@ ArmState clip_arm_state(const ArmState& arm_state) {
     ans.r = clip_f(arm_state.r, min_r, max_r);
     ans.theta = clip_f(arm_state.theta, min_theta, max_theta);
     ans.z = clip_f(arm_state.z, 0.0f, 225.0f);
-    ans.phi = clip_f(arm_state.phi, -M_PI*32.0f/18.0f, M_PI*32.0f/18.0f);  // TODO: 実装
+    ans.phi = clip_f(arm_state.phi, deg_to_rad(-97.0f), deg_to_rad(110.0f));  // TODO: 実装
     return ans;
 }
 
@@ -57,6 +57,7 @@ namespace arm_controller{
             if(this->joy_state.get_button_1_indexed(7, true)) { // 自動動作モードへの切り替えボタン
                 switch (this->_controller_state) {
                     case ControllerState::CTRL_HUMAN:
+                        this->_traj_target_points = {this->_tip_state_origin, TipState(-325.0, 225.0, 0.0, M_PI/4.0f)};
                         this->_change_controller_state(ControllerState::CTRL_BEFORE_GENERATING);
                         RCLCPP_WARN(this->get_logger(), "[INFO] CTRL_HUMAN -> CTRL_AUTO");
                         break;
@@ -69,7 +70,6 @@ namespace arm_controller{
                         this->_change_controller_state(ControllerState::CTRL_HUMAN);
                         RCLCPP_WARN(this->get_logger(), "[INFO] -> CTRL_HUMAN");
                         break;
-
                 }
             }
 
@@ -129,8 +129,10 @@ namespace arm_controller{
             // 原点に戻る
             if(this->joy_state.get_button_1_indexed(9, true)) {
                 RCLCPP_WARN(this->get_logger(), "[INFO] return to origin!");
-                _send_request_arm_state(clip_arm_state(arm_ik(this->_tip_state_origin)));
-                this->_requested_state.set_state(this->_tip_state_origin);
+                if(this->_requested_state.tip_state() != this->_tip_state_origin) {
+                    _traj_target_points = {this->_requested_state.tip_state(), this->_tip_state_origin};
+                    this->_change_controller_state(ControllerState::CTRL_BEFORE_GENERATING);
+                }
             }
         };
 
@@ -173,28 +175,27 @@ namespace arm_controller{
         if(this->_controller_state == ControllerState::CTRL_HUMAN)return;
         if(this->_controller_state == ControllerState::CTRL_BEFORE_GENERATING){
             auto request = std::make_shared<traj_srv::Request>();
-            TipState start = _tip_state_origin;
-            TipState end = TipState(-325.0, 225.0, 0.0, 0.0);
-            request->waypoints.emplace_back(convert_tip_state(start));
-            request->waypoints.emplace_back(convert_tip_state(end));
+            std::cout << this->_traj_target_points.size() << std::endl;
+            for(auto& tmp: this->_traj_target_points){
+                request->waypoints.emplace_back(convert_tip_state(tmp));
+            }
             request->step_length = 20.0;
 
             auto future_res = _traj_client->async_send_request(
                     request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));
-            // TODO: serviceのthreadを分ける必要がある
+            // serviceのthreadを分ける必要がある
             this->_change_controller_state(ControllerState::CTRL_GENERATING);
         }
     }
 
-    void ArmControllerNode::_traj_service_future_callback(const rclcpp::Client<traj_srv>::SharedFuture future){
+    void ArmControllerNode::_traj_service_future_callback(rclcpp::Client<traj_srv>::SharedFuture future){
         if(future.get()->is_feasible){
             auto ans_path = future.get() -> trajectory;
             std::vector<ArmState> tmp_traj;
             std::transform(ans_path.begin(), ans_path.end(), std::back_inserter(tmp_traj), [this](const auto& tmp){
                 ArmState arm_state = convert_arm_state(tmp);
                 if(clip_arm_state(arm_state) != arm_state){
-                    RCLCPP_WARN(this->get_logger(), "%lf, %lf, %lf", arm_state.r, arm_state.theta, arm_state.phi);
-                    RCLCPP_ERROR(this->get_logger(), "[ERROR] trajectory clipped!");
+                    RCLCPP_ERROR(this->get_logger(), "[ERROR] trajectory clipped! : (%lf, %lf, %lf)", arm_state.r, arm_state.theta, arm_state.phi);
                 }
                 return clip_arm_state(arm_state);
             });

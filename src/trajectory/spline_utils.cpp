@@ -92,7 +92,7 @@ std::vector<ArmState> path_func(const std::vector<ArmState>& waypoints, double l
     for(int i=0; i<n; i++){
         double t = t_min + (double)i*(t_max - t_min)/((double)(n-1));
         double phi = phis[0] + (phis[phis.size()-1] - phis[0]) * (double)i / (double)(n-1);
-        ans.emplace_back(spline_rs(t), spline_thetas(t), 0.0, phi);
+        ans.emplace_back(ArmState(spline_rs(t), spline_thetas(t), 0.0, phi));
     }
     return ans;
 }
