@@ -69,7 +69,7 @@ std::vector<ArmState> path_func(const std::vector<ArmState>& waypoints, double l
     // states -> rs, thetas
     std::vector<double> rs, thetas, phis;
     std::for_each(waypoints.begin(), waypoints.end(),[&rs, &thetas, &phis](auto& tmp){
-        rs.emplace_back(tmp.r);
+        rs.emplace_back(tmp.r/1000.0);
         thetas.emplace_back(tmp.theta);
         phis.emplace_back(tmp.phi);
     });
@@ -85,14 +85,14 @@ std::vector<ArmState> path_func(const std::vector<ArmState>& waypoints, double l
     spline_thetas.set_points(times, thetas, line_type);
 
 
-    int n = 30;
+    int n = 8;
     chmax(n, (int) ceil((t_max - t_min) / length));
     std::cout << "t_range: " << t_max - t_min << std::endl;
     std::vector<ArmState> ans;
     for(int i=0; i<n; i++){
         double t = t_min + (double)i*(t_max - t_min)/((double)(n-1));
         double phi = phis[0] + (phis[phis.size()-1] - phis[0]) * (double)i / (double)(n-1);
-        ans.emplace_back(ArmState(spline_rs(t), spline_thetas(t), 0.0, phi));
+        ans.emplace_back(ArmState(spline_rs(t)*1000.0, spline_thetas(t), 0.0, phi));
     }
     return ans;
 }

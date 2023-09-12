@@ -206,15 +206,15 @@ public:
     ob::Cost motionCost(const ob::State* s1, const ob::State* s2) const override{
         auto[x1, y1, yaw1] = FK(s1);
         auto[x2, y2, yaw2] = FK(s2);
-        return ob::Cost(sqrt(pow(x2-x1, 2.0) + pow(y2-y1, 2.0)));
+        return ob::Cost(sqrt(pow(x2-x1/1000, 2.0) + pow(y2-y1/1000, 2.0)));
     }
 };
 
 class ParamLengthObjective : public ob::StateCostIntegralObjective{
 private:
-    double d_theta = 1.0;
-    double d_r = 0.1;
-    double d_phi = 1.2;
+    double d_theta = 0.1;
+    double d_r = 1000.0;
+    double d_phi = 0.2;
 
 public:
     ParamLengthObjective(const ob::SpaceInformationPtr& space_info) :
@@ -225,14 +225,14 @@ public:
         auto [theta, r, phi] = std::make_tuple(tmp[0], tmp[1], tmp[2]);
         const auto *tmp2 = s2->as<ob::RealVectorStateSpace::StateType>()->values;
         auto [theta2, r2, phi2] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
-        return ob::Cost(abs(theta2-theta)/d_theta + abs(r2-r)/d_r + abs(phi2 - phi)/d_phi);
+        return ob::Cost(abs(theta2-theta)/d_theta + abs(r2-r)/d_r + abs(phi2-phi)/d_phi);
     }
 };
 
 
 ob::OptimizationObjectivePtr getBalancedObjective1(const ob::SpaceInformationPtr& si){
     auto trajObj(std::make_shared<TipPathObjective>(si));
-    auto lengthObj(std::make_shared<ParamLengthObjective>(si));
+    auto paramlengthObj(std::make_shared<ParamLengthObjective>(si));
     auto clearObj(std::make_shared<ClearanceObjective>(si));
     auto opt(std::make_shared<ob::MultiOptimizationObjective>(si));  // 目的関数の合成
 
@@ -243,7 +243,7 @@ ob::OptimizationObjectivePtr getBalancedObjective1(const ob::SpaceInformationPtr
         return ob::Cost((pow(x2-x1, 2.0) + pow(y2-y1, 2.0)));
     };
     opt->setCostToGoHeuristic(h_func);
-    opt->addObjective(lengthObj, 1.0);
+    opt->addObjective(paramlengthObj, 1.0);
 //    opt->addObjective(trajObj, 5.0);
 //    opt->addObjective(clearObj, 0.05);
 
@@ -268,9 +268,9 @@ matrix<double> interpolate_by_pos(std::vector<double> start, std::vector<double>
 std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double length){
     auto state_space(std::make_shared<ob::RealVectorStateSpace>(3));
     matrix<double> bounds_pre{
-            std::vector<double>{0.0, M_PI*2.0}, // theta
+            std::vector<double>{-M_PI_2, M_PI*2.0+ deg_to_rad(10.0)}, // theta
             std::vector<double>{325.0, 975.0},  // r
-            std::vector<double>{-M_PI, M_PI},
+            std::vector<double>{deg_to_rad(-97.0f), deg_to_rad(110.0f)},
     };
 
     ob::RealVectorBounds bounds(3);
@@ -309,12 +309,12 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
 //    prob_def->print(std::cout);  // 問題設定を表示
 
 
-    auto planner = allocatePlanner(space_info, PLANNER_INF_RRTSTAR);
+    auto planner = allocatePlanner(space_info, PLANNER_PRMSTAR);
     planner->setProblemDefinition(prob_def);  // problem instanceを代入
     planner->setup();  // plannerのsetup
 
 
-    ob::PlannerStatus solved = planner->ob::Planner::solve(0.4);
+    ob::PlannerStatus solved = planner->ob::Planner::solve(0.5);
     if (!solved) {
         std::cout << "No solution found" << std::endl;
         return std::make_pair(std::vector<ArmState>{}, false);
@@ -338,11 +338,13 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
         auto [theta, r, phi] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
         traj.emplace_back(r, theta, 0.0, phi);
     }
-    auto traj_pre = path_func(traj, 10.0);
+    auto traj_pre = path_func(traj, 0.7);
     auto r_theta_trajectory = path_func_xy(traj_pre, length);
     for(auto& tmp: r_theta_trajectory){
+//    for(auto& tmp: traj){
         writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
     }
     writing_file.close();
     return std::make_pair(r_theta_trajectory, true);
+//    return std::make_pair(traj, true);
 }
