@@ -53,7 +53,7 @@ class ValidityCheckerRobotArea : public ob::StateValidityChecker{  // state spac
     double hand_w = 58.0 * 2.0;
 
 //    double max_field_x = 1005.0 / 2.0 ;
-    double max_field_x = 1500.0 / 2.0 ;
+    double max_field_x = 1800.0 / 2.0 ;
     double max_field_y_up = 680.0 ;
     double min_field_y_lw = -1045.0 ;
 
@@ -67,6 +67,27 @@ public:
     bool isValid(const ob::State* state) const override;
 };
 
+
+// 共通エリア有り
+class ValidityCheckerRobotAreaCommon : public ob::StateValidityChecker{  // state spaceのvalidity checker
+    ob::SpaceInformationPtr space_info;
+    double hand_h = 390;
+    double hand_w = 58.0 * 2.0;
+
+//    double max_field_x = 1005.0 / 2.0 ;
+    double max_field_x = 1800.0 / 2.0 ;
+    double max_field_y_up = 970.0 ;
+    double min_field_y_lw = -1045.0 ;
+
+    double _clearance_field_area(const XY& vertex) const;
+public:
+    explicit ValidityCheckerRobotAreaCommon(const ob::SpaceInformationPtr& space_info_);
+
+    double clearance(const ob::State* state) const override;
+
+    // 与えられた状態の位置が円形の障害物に重なっているかどうかを返す。
+    bool isValid(const ob::State* state) const override;
+};
 
 
 
@@ -98,14 +119,13 @@ public:
 
 
 
-
-
-
 class OMPL_PlannerClass{
 private:
-    std::shared_ptr<ompl::base::SpaceInformation> _space_info;
+    std::shared_ptr<ompl::base::SpaceInformation> _space_info_our_area;  // 共通エリアなし
+    std::shared_ptr<ompl::base::SpaceInformation> _space_info_common;  // 共通エリア有り
 public:
-    std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double l_min, double l_max, double d_max);
+    OMPL_PlannerClass();
+    std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double l_min, double l_max, double d_max, bool is_common=false);
     // is_feasible (trueなら問題ない)
 };
 

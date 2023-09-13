@@ -17,19 +17,22 @@ namespace arm_trajectory{
         using namespace std::placeholders;
         auto bind_callback = std::bind(&ArmTrajectoryService::srv_callback, this, _1, _2);
         arm_trajectory_service = this->create_service<arm_traj_srv>("arm_trajectory_service", bind_callback);
-
     }
 
     void ArmTrajectoryService::srv_callback(const std::shared_ptr<arm_traj_srv::Request> request,
                                             const std::shared_ptr<arm_traj_srv::Response> response) {
         if(request->waypoints.size() != 2){
+            RCLCPP_WARN(this->get_logger(), "[TrajService] invalid points num");
             response->is_feasible = false;
             response->trajectory.clear();
             return;
         }
-        RCLCPP_WARN(this->get_logger(), "way1 theta -> %lf", request->waypoints[0].theta);
-        auto [traj, is_feasible] = plan(convert_tip_state(request->waypoints[0]),
-                                        convert_tip_state(request->waypoints[1]), request->step_min, request->step_max, request->d_step_max);
+
+        TipState start = convert_tip_state(request->waypoints[0]), goal = convert_tip_state(request->waypoints[1]);
+//        auto [traj, is_feasible] = plan(convert_tip_state(request->waypoints[0]),
+//                                        convert_tip_state(request->waypoints[1]), request->step_min, request->step_max, request->d_step_max);
+        auto [traj, is_feasible] = this->planner.plan(start, goal,request->step_min,
+                                                      request->step_max, request->d_step_max, true);
         if(!is_feasible){
             response->is_feasible = is_feasible;
             response->trajectory.clear();
