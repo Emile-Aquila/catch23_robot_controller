@@ -2,6 +2,7 @@ TipState[] waypoints
 float32 step_min
 float32 step_max
 float32 d_step_max
+bool is_common  # 共通エリアに侵入して良いか
 ---
 ArmState[] trajectory
 bool is_feasible

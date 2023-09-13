@@ -186,6 +186,7 @@ namespace arm_controller{
             request->step_min = 10.0f;
             request->step_max = 70.0f;
             request->d_step_max = 10.0f;
+            request->is_common = true; // TODO: 条件に合わせて変更する.
 
             auto future_res = _traj_client->async_send_request(
                     request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));

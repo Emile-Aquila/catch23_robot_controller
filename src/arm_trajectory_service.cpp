@@ -29,10 +29,8 @@ namespace arm_trajectory{
         }
 
         TipState start = convert_tip_state(request->waypoints[0]), goal = convert_tip_state(request->waypoints[1]);
-//        auto [traj, is_feasible] = plan(convert_tip_state(request->waypoints[0]),
-//                                        convert_tip_state(request->waypoints[1]), request->step_min, request->step_max, request->d_step_max);
-        auto [traj, is_feasible] = this->planner.plan(start, goal,request->step_min,
-                                                      request->step_max, request->d_step_max, true);
+        auto [traj, is_feasible] = this->planner.plan(start, goal,request->step_min, request->step_max,
+                                                      request->d_step_max, request->is_common);
         if(!is_feasible){
             response->is_feasible = is_feasible;
             response->trajectory.clear();
