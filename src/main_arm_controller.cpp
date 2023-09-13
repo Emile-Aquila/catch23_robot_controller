@@ -92,14 +92,14 @@ namespace arm_controller{
                         if(this->joy_state.get_button_1_indexed(5 , true)) {  // ワークの位置へ
                             this->_traj_target_points = {
                                     this->_requested_state.tip_state(),
-                                    TipState(-325.0, 225.0, 0.0, M_PI/4.0f + M_PI_2)
+                                    TipState(-505.0, 415.0, 0.0, M_PI/4.0f + M_PI_2)
                             };
                             this->_change_auto_mode_state(AutoState::AUTO_BEFORE_GENERATING);
                         }else if(this->joy_state.get_button_1_indexed(6, true)){  // シューティングボックスへ
                             this->_traj_target_points = {
                                     this->_requested_state.tip_state(),
-                                    TipState(325.0, -145.0 - 200.0, 0.0, M_PI_2),
-                                    TipState(375.0, -145.0 - 200.0, 0.0, M_PI_2),
+                                    TipState(410.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
+                                    TipState(410.0 + 100.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
                             };
                             this->_change_auto_mode_state(AutoState::AUTO_BEFORE_GENERATING);
                         }
@@ -206,7 +206,7 @@ namespace arm_controller{
             request->step_min = 10.0f;
             request->step_max = 70.0f;
             request->d_step_max = 10.0f;
-            request->is_common = true; // TODO: 条件に合わせて変更する.
+            request->is_common = false; // TODO: 条件に合わせて変更する.
 
             auto future_res = _traj_client->async_send_request(
                     request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));

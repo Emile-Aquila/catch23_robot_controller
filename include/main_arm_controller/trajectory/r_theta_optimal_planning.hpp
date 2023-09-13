@@ -10,6 +10,7 @@
 #include <vector>
 #include <ompl/base/SpaceInformation.h>
 #include <ompl/base/StateValidityChecker.h>
+#include <ompl/base/MotionValidator.h>
 #include <ompl/base/OptimizationObjective.h>
 #include <ompl/base/Cost.h>
 #include "ompl/util/Console.h"
@@ -54,8 +55,9 @@ class ValidityCheckerRobotArea : public ob::StateValidityChecker{  // state spac
 
 //    double max_field_x = 1005.0 / 2.0 ;
     double max_field_x = 1800.0 / 2.0 ;
-    double max_field_y_up = 680.0 ;
+    double max_field_y_up = 650.0 ;
     double min_field_y_lw = -1045.0 ;
+    double max_shooter_x = (1560 + 200.0) / 2.0;
 
     double _clearance_field_area(const XY& vertex) const;
 public:
@@ -78,6 +80,7 @@ class ValidityCheckerRobotAreaCommon : public ob::StateValidityChecker{  // stat
     double max_field_x = 1800.0 / 2.0 ;
     double max_field_y_up = 970.0 ;
     double min_field_y_lw = -1045.0 ;
+    double max_shooter_x = (1560 + 200.0) / 2.0;
 
     double _clearance_field_area(const XY& vertex) const;
 public:
@@ -107,7 +110,7 @@ public:
 
 class ParamLengthObjective : public ob::StateCostIntegralObjective{
 private:
-    double d_theta = 0.1;
+    double d_theta = 0.05;
     double d_r = 1000.0;
     double d_phi = 0.2;
 
@@ -129,7 +132,5 @@ public:
     // is_feasible (trueなら問題ない)
 };
 
-std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double l_min, double l_max, double d_max);
-// is_feasible (trueなら問題ない)
 
 #endif //ROS2_WS_R_THETA_OPTIMAL_PLANNING_HPP

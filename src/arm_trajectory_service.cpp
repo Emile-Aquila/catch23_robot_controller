@@ -28,9 +28,6 @@ namespace arm_trajectory{
             return;
         }
 
-//        TipState start = convert_tip_state(request->waypoints[0]), goal = convert_tip_state(request->waypoints[1]);
-//        auto [traj, is_feasible] = this->planner.plan(start, goal,request->step_min, request->step_max,
-//                                                      request->d_step_max, request->is_common);
         std::vector<ArmState> ans_traj;
         bool is_feasible = true;
         for(size_t i=0; i<request->waypoints.size()-1; i++){
@@ -56,7 +53,6 @@ namespace arm_trajectory{
             writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
         }
         writing_file.close();
-
 
         std::transform(ans_traj.begin(), ans_traj.end(), std::back_inserter(response->trajectory),
                        [](const auto& tmp){ return convert_arm_state(tmp); });

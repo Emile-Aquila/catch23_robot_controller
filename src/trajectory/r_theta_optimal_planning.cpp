@@ -20,6 +20,7 @@
 #include <ompl/geometric/planners/rrt/InformedRRTstar.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/geometric/planners/rrt/SORRTstar.h>
+#include <ompl/geometric/planners/rrt/STRRTstar.h>
 
 // For boost program options
 #include <boost/program_options.hpp>
@@ -119,7 +120,7 @@ ValidityCheckerRobotArea::ValidityCheckerRobotArea(const ob::SpaceInformationPtr
 double ValidityCheckerRobotArea::_clearance_field_area(const XY& vertex) const {
     auto [x,y] = vertex;
     double ans = std::min({max_field_x - abs(x), max_field_y_up - y, y - min_field_y_lw});
-    if(y <= 0.0)chmin(ans, 1360 - x);
+    if(y <= 0.0)chmin(ans, max_shooter_x - x);
     return ans;
 }
 
@@ -149,7 +150,7 @@ ValidityCheckerRobotAreaCommon::ValidityCheckerRobotAreaCommon(const ob::SpaceIn
 double ValidityCheckerRobotAreaCommon::_clearance_field_area(const XY& vertex) const {
     auto [x,y] = vertex;
     double ans = std::min({max_field_x - abs(x), max_field_y_up - y, y - min_field_y_lw});
-    if(y <= 0.0)chmin(ans, 1360.0/2.0 - x);
+    if(y <= 0.0)chmin(ans, max_shooter_x - x);
     return ans;
 }
 
@@ -232,31 +233,56 @@ ob::OptimizationObjectivePtr getBalancedObjective1(const ob::SpaceInformationPtr
     return ob::OptimizationObjectivePtr(opt);
 }
 
+class MotionValidatorChecker : public ob::MotionValidator{  // state spaceのvalidity checker
+    ob::SpaceInformationPtr space_info;
+public:
+    explicit MotionValidatorChecker(const ompl::base::SpaceInformationPtr &space_info_) : MotionValidator(space_info_) {
+        space_info = space_info_;
+    }
 
+    bool checkMotion(const ob::State *s1, const ob::State* s2) const override{
+        const auto *r_vec = s1->as<ob::RealVectorStateSpace::StateType>();
+        const double *tmp = r_vec->values;
+        auto [theta1, r1, phi1] = std::make_tuple(tmp[0], tmp[1], tmp[2]);
+
+        const auto *r_vec2 = s2->as<ob::RealVectorStateSpace::StateType>();
+        const double *tmp2 = r_vec2->values;
+        auto [theta2, r2, phi2] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
+        if(abs(theta2-theta1) < 1.5 && abs(phi2 - phi1) < 1.5)return true;
+        else return false;
+    }
+
+    bool checkMotion(const ob::State *s1, const ob::State* s2, std::pair<ob::State*, double> &lastValid) const override{
+        return checkMotion(s1, s2);
+    }
+};
 
 OMPL_PlannerClass::OMPL_PlannerClass() {
     auto state_space(std::make_shared<ob::RealVectorStateSpace>(3));
-//    auto state_space_common(std::make_shared<ob::RealVectorStateSpace>(3));
+    auto state_space_common(std::make_shared<ob::RealVectorStateSpace>(3));
     matrix<double> bounds_pre{
-            std::vector<double>{-M_PI_2, M_PI*2.0+ deg_to_rad(10.0)}, // theta
+            std::vector<double>{-M_PI_2, M_PI*2.0 - deg_to_rad(10.0)}, // theta
             std::vector<double>{325.0, 975.0},  // r
             std::vector<double>{deg_to_rad(-97.0f), deg_to_rad(110.0f)},
     };
 
-    ob::RealVectorBounds bounds(3);
+    ob::RealVectorBounds bounds(3), bounds_common(3);
     for(int i=0; i<bounds_pre.size(); i++){
         bounds.setLow(i, bounds_pre[i][0]);
         bounds.setHigh(i, bounds_pre[i][1]);
+        bounds_common.setLow(i, bounds_pre[i][0]);
+        bounds_common.setHigh(i, bounds_pre[i][1]);
     }
     state_space->setBounds(bounds);  // bounds for param
-//    state_space_common->setBounds(bounds);  // bounds for param
+    state_space_common->setBounds(bounds);  // bounds for param
 
     _space_info_our_area = std::make_shared<ob::SpaceInformation>(state_space);
     _space_info_our_area->setStateValidityChecker(std::make_shared<ValidityCheckerRobotArea>(_space_info_our_area));
+//    _space_info_our_area->setMotionValidator(std::make_shared<MotionValidatorChecker>(_space_info_our_area));
     _space_info_our_area->setup();
     _space_info_our_area->printSettings(std::cout);
 
-    _space_info_common = std::make_shared<ob::SpaceInformation>(state_space);
+    _space_info_common = std::make_shared<ob::SpaceInformation>(state_space_common);
     _space_info_common->setStateValidityChecker(std::make_shared<ValidityCheckerRobotAreaCommon>(_space_info_common));
     _space_info_common->setup();
     _space_info_common->printSettings(std::cout);
@@ -293,10 +319,10 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
     prob_def->setOptimizationObjective(getBalancedObjective1(space_info));  // 目的関数の設定
 //    prob_def->print(std::cout);  // 問題設定を表示
 
-    auto planner = allocatePlanner(space_info, PLANNER_PRMSTAR);
+    auto planner = allocatePlanner(space_info, PLANNER_FMTSTAR);
     planner->setProblemDefinition(prob_def);  // problem instanceを代入
     planner->setup();  // plannerのsetup
-
+    planner->checkValidity();
 
     ob::PlannerStatus solved = planner->ob::Planner::solve(0.5);
     if (!solved) {
@@ -308,6 +334,9 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
     if(path->getStates().size() <= 2){  // スプライン補間は3点以上必要
         path->interpolate(3);
     }
+    path->interpolate(4);
+//    path->checkAndRepair(10);
+
     std::vector<ArmState> traj;
     for(auto& tmp: path->getStates()){
         auto *tmp2 = (*tmp).as<ob::RealVectorStateSpace::StateType>()->values;
@@ -315,7 +344,8 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
         traj.emplace_back(r, theta, 0.0, phi);
     }
 
-    std::vector<ArmState> traj_pre = path_func(traj, 0.7);  // スプライン補間 (パラメータ空間)
-    std::vector<ArmState>  r_theta_trajectory = path_func_xy(traj_pre, l_min, l_max, d_max);  // スプライン補間 (xy)
+    std::vector<ArmState> traj_pre = path_func(traj, 0.3);  // スプライン補間 (パラメータ空間)
+    std::vector<ArmState> r_theta_trajectory = path_func_xy(traj_pre, l_min, l_max, d_max);  // スプライン補間 (xy)
     return std::make_pair(r_theta_trajectory, true);
+//    return std::make_pair(traj, true);
 }
