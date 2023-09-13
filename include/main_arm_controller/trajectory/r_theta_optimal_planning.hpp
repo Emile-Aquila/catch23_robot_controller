@@ -55,7 +55,7 @@ class ValidityCheckerRobotArea : public ob::StateValidityChecker{  // state spac
 
 //    double max_field_x = 1005.0 / 2.0 ;
     double max_field_x = 1800.0 / 2.0 ;
-    double max_field_y_up = 650.0 ;
+    double max_field_y_up = 610.0;
     double min_field_y_lw = -1045.0 ;
     double max_shooter_x = (1560 + 200.0) / 2.0;
 

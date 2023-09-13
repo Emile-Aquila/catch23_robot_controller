@@ -204,8 +204,8 @@ namespace arm_controller{
 //            };
 
             request->step_min = 10.0f;
-            request->step_max = 70.0f;
-            request->d_step_max = 10.0f;
+            request->step_max = 90.0f;
+            request->d_step_max = 20.0f;
             request->is_common = false; // TODO: 条件に合わせて変更する.
 
             auto future_res = _traj_client->async_send_request(
