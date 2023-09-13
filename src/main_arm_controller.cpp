@@ -205,12 +205,14 @@ namespace arm_controller{
                 }
                 return clip_arm_state(arm_state);
             });
-            std::cout << "test: terminate trajectory -> theta, phi: " << tmp_traj[tmp_traj.size()-1].theta << ", " << tmp_traj[tmp_traj.size() - 1].phi << std::endl;
+            std::cout << "test: terminate trajectory -> theta, phi: " << tmp_traj.back().theta << ", " << tmp_traj.back().phi << std::endl;
             _trajectory_data.set(tmp_traj);
             RCLCPP_INFO(this->get_logger(), "[INFO] trajectory generated!!");
             _change_controller_state(ControllerState::CTRL_FOLLOWING);
         }else{
             RCLCPP_ERROR(this->get_logger(), "[ERROR] generated trajectory is invalid!");
+            this->_requested_state.set_state(this->_traj_target_points.back());  // 経路が生成できなった場合には位置制御を行う.
+            _send_request_arm_state(this->_requested_state.arm_state());
             _change_controller_state(ControllerState::CTRL_HUMAN);
         }
     }
