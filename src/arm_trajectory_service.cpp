@@ -21,22 +21,44 @@ namespace arm_trajectory{
 
     void ArmTrajectoryService::srv_callback(const std::shared_ptr<arm_traj_srv::Request> request,
                                             const std::shared_ptr<arm_traj_srv::Response> response) {
-        if(request->waypoints.size() != 2){
-            RCLCPP_WARN(this->get_logger(), "[TrajService] invalid points num");
+        if(request->waypoints.size() < 2){
+            RCLCPP_WARN(this->get_logger(), "[TrajService] invalid points num (points.size() < 2)");
             response->is_feasible = false;
             response->trajectory.clear();
             return;
         }
 
-        TipState start = convert_tip_state(request->waypoints[0]), goal = convert_tip_state(request->waypoints[1]);
-        auto [traj, is_feasible] = this->planner.plan(start, goal,request->step_min, request->step_max,
-                                                      request->d_step_max, request->is_common);
+//        TipState start = convert_tip_state(request->waypoints[0]), goal = convert_tip_state(request->waypoints[1]);
+//        auto [traj, is_feasible] = this->planner.plan(start, goal,request->step_min, request->step_max,
+//                                                      request->d_step_max, request->is_common);
+        std::vector<ArmState> ans_traj;
+        bool is_feasible = true;
+        for(size_t i=0; i<request->waypoints.size()-1; i++){
+            TipState start = convert_tip_state(request->waypoints[i]), goal = convert_tip_state(request->waypoints[i+1]);
+            auto [traj_tmp, is_feasible_tmp] = this->planner.plan(
+                    start, goal,request->step_min, request->step_max, request->d_step_max, request->is_common);
+            if(!is_feasible_tmp)is_feasible = false;
+            ans_traj.insert(ans_traj.end(), traj_tmp.begin(), traj_tmp.end());
+        }
         if(!is_feasible){
             response->is_feasible = is_feasible;
             response->trajectory.clear();
             return;
         }
-        std::transform(traj.begin(), traj.end(), std::back_inserter(response->trajectory),
+
+        std::ofstream writing_file;
+        try{
+            writing_file.open("path.txt");
+        }catch(const std::exception& e){
+            std::cerr << "can't open path.txt" << std::endl;
+        }
+        for(auto& tmp: ans_traj){
+            writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
+        }
+        writing_file.close();
+
+
+        std::transform(ans_traj.begin(), ans_traj.end(), std::back_inserter(response->trajectory),
                        [](const auto& tmp){ return convert_arm_state(tmp); });
         response->is_feasible = true;
     }

@@ -98,7 +98,8 @@ namespace arm_controller{
                         }else if(this->joy_state.get_button_1_indexed(6, true)){  // シューティングボックスへ
                             this->_traj_target_points = {
                                     this->_requested_state.tip_state(),
-                                    TipState(325.0, -145.0 - 200.0, 0.0, M_PI_2)
+                                    TipState(325.0, -145.0 - 200.0, 0.0, M_PI_2),
+                                    TipState(375.0, -145.0 - 200.0, 0.0, M_PI_2),
                             };
                             this->_change_auto_mode_state(AutoState::AUTO_BEFORE_GENERATING);
                         }
@@ -193,11 +194,14 @@ namespace arm_controller{
         if(this->_controller_state == ControllerState::CTRL_HUMAN)return;
         if(this->_auto_state == AutoState::AUTO_BEFORE_GENERATING){
             auto request = std::make_shared<traj_srv::Request>();
-            if(this->_traj_target_points.size() != 2)RCLCPP_ERROR(this->get_logger(), "[ERROR] _traj_target_points.size() is not 2");
-            request->waypoints = {
-                    convert_tip_state(this->_traj_target_points.front()),
-                    convert_tip_state(this->_traj_target_points.back())
-            };
+            if(this->_traj_target_points.size() < 2)RCLCPP_ERROR(this->get_logger(), "[ERROR] _traj_target_points.size() < 2");
+            for(const auto& tmp: this->_traj_target_points){
+                request->waypoints.emplace_back(convert_tip_state(tmp));
+            }
+//            request->waypoints = {
+//                    convert_tip_state(this->_traj_target_points.front()),
+//                    convert_tip_state(this->_traj_target_points.back())
+//            };
 
             request->step_min = 10.0f;
             request->step_max = 70.0f;

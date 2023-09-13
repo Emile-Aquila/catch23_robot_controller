@@ -13,7 +13,7 @@
 #include <memory>
 #include <vector>
 #include <main_arm_controller/utils/joystick_state.hpp>
-#include "sensor_msgs/msg/joy.hpp"
+#include <sensor_msgs/msg/joy.hpp>
 #include <main_arm_controller/utils/robot_state.hpp>
 
 

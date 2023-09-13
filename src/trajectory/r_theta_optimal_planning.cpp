@@ -118,7 +118,9 @@ ValidityCheckerRobotArea::ValidityCheckerRobotArea(const ob::SpaceInformationPtr
 
 double ValidityCheckerRobotArea::_clearance_field_area(const XY& vertex) const {
     auto [x,y] = vertex;
-    return std::min({max_field_x - abs(x), max_field_y_up - y, y - min_field_y_lw});
+    double ans = std::min({max_field_x - abs(x), max_field_y_up - y, y - min_field_y_lw});
+    if(y <= 0.0)chmin(ans, 1360 - x);
+    return ans;
 }
 
 double ValidityCheckerRobotArea::clearance(const ob::State* state) const {
@@ -146,8 +148,11 @@ ValidityCheckerRobotAreaCommon::ValidityCheckerRobotAreaCommon(const ob::SpaceIn
 
 double ValidityCheckerRobotAreaCommon::_clearance_field_area(const XY& vertex) const {
     auto [x,y] = vertex;
-    return std::min({max_field_x - abs(x), max_field_y_up - y, y - min_field_y_lw});
+    double ans = std::min({max_field_x - abs(x), max_field_y_up - y, y - min_field_y_lw});
+    if(y <= 0.0)chmin(ans, 1360.0/2.0 - x);
+    return ans;
 }
+
 double ValidityCheckerRobotAreaCommon::clearance(const ob::State* state) const {
     // 与えられた状態の位置から円形の障害物の境界までの距離を返す。
     auto [x, y, yaw] = FK(state);
@@ -229,97 +234,6 @@ ob::OptimizationObjectivePtr getBalancedObjective1(const ob::SpaceInformationPtr
 
 
 
-
-
-
-std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const TipState& goal_tip, double l_min, double l_max, double d_max){
-    auto state_space(std::make_shared<ob::RealVectorStateSpace>(3));
-    matrix<double> bounds_pre{
-            std::vector<double>{-M_PI_2, M_PI*2.0+ deg_to_rad(10.0)}, // theta
-            std::vector<double>{325.0, 975.0},  // r
-            std::vector<double>{deg_to_rad(-97.0f), deg_to_rad(110.0f)},
-    };
-
-    ob::RealVectorBounds bounds(3);
-    for(int i=0; i<bounds_pre.size(); i++){
-        bounds.setLow(i, bounds_pre[i][0]);
-        bounds.setHigh(i, bounds_pre[i][1]);
-    }
-    state_space->setBounds(bounds);  // bounds for param
-
-    std::shared_ptr<ompl::base::SpaceInformation> space_info(std::make_shared<ob::SpaceInformation>(state_space));
-    space_info->setStateValidityChecker(std::make_shared<ValidityCheckerRobotArea>(space_info));
-    space_info->setup();
-
-    // start point
-    ob::ScopedState<> start(state_space);  // (theta, r, phi)
-    ArmState start_tmp = arm_ik(start_tip);
-    std::cout<<"start: x,y,theta -> " << start_tip.x <<", "<< start_tip.y <<", "<< start_tip.theta <<std::endl;
-    std::cout<<"start: r,theta,phi -> " << start_tmp.r <<", "<< start_tmp.theta <<", "<< start_tmp.phi <<std::endl;
-    start->as<ob::RealVectorStateSpace::StateType>()->values[0] = start_tmp.theta;
-    start->as<ob::RealVectorStateSpace::StateType>()->values[1] = start_tmp.r;
-    start->as<ob::RealVectorStateSpace::StateType>()->values[2] = start_tmp.phi;
-
-    // goal point
-    ob::ScopedState<> goal(state_space);  // (1, 1, 1)
-    ArmState goal_tmp = arm_ik(goal_tip);
-    std::cout<<"goal: x,y,theta -> " << goal_tip.x <<", "<< goal_tip.y <<", "<< goal_tip.theta <<std::endl;
-    std::cout<<"goal: r,theta,phi -> " << goal_tmp.r <<", "<< goal_tmp.theta <<", "<< goal_tmp.phi <<std::endl;
-    goal->as<ob::RealVectorStateSpace::StateType>()->values[0] = goal_tmp.theta;
-    goal->as<ob::RealVectorStateSpace::StateType>()->values[1] = goal_tmp.r;
-    goal->as<ob::RealVectorStateSpace::StateType>()->values[2] = goal_tmp.phi;
-
-    // problem definition
-    auto prob_def(std::make_shared<ob::ProblemDefinition>(space_info));  // problem instance
-    prob_def->setStartAndGoalStates(start, goal);
-    prob_def->setOptimizationObjective(getBalancedObjective1(space_info));  // 目的関数の設定
-
-//    space_info->printSettings(std::cout);
-//    prob_def->print(std::cout);  // 問題設定を表示
-
-
-    auto planner = allocatePlanner(space_info, PLANNER_PRMSTAR);
-    planner->setProblemDefinition(prob_def);  // problem instanceを代入
-    planner->setup();  // plannerのsetup
-
-
-    ob::PlannerStatus solved = planner->ob::Planner::solve(0.5);
-    if (!solved) {
-        std::cout << "No solution found" << std::endl;
-        return std::make_pair(std::vector<ArmState>{}, false);
-    }
-
-    auto path = std::static_pointer_cast<og::PathGeometric>(prob_def->getSolutionPath());
-    if(path->getStates().size() <= 2){  // スプライン補間は3点以上必要
-        path->interpolate(3);
-    }
-
-    std::ofstream writing_file;
-    try{
-        writing_file.open("path.txt");
-    }catch(const std::exception& e){
-        std::cerr << "can't open path.txt" << std::endl;
-    }
-
-    std::vector<ArmState> traj;
-    for(auto& tmp: path->getStates()){
-        auto *tmp2 = (*tmp).as<ob::RealVectorStateSpace::StateType>()->values;
-        auto [theta, r, phi] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
-        traj.emplace_back(r, theta, 0.0, phi);
-    }
-
-    std::vector<ArmState> traj_pre = path_func(traj, 0.7);  // スプライン補間 (パラメータ空間)
-    std::vector<ArmState>  r_theta_trajectory = path_func_xy(traj_pre, l_min, l_max, d_max);  // スプライン補間 (xy)
-    for(auto& tmp: r_theta_trajectory){
-        writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
-    }
-    writing_file.close();
-    return std::make_pair(r_theta_trajectory, true);
-}
-
-
-
-
 OMPL_PlannerClass::OMPL_PlannerClass() {
     auto state_space(std::make_shared<ob::RealVectorStateSpace>(3));
 //    auto state_space_common(std::make_shared<ob::RealVectorStateSpace>(3));
@@ -394,14 +308,6 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
     if(path->getStates().size() <= 2){  // スプライン補間は3点以上必要
         path->interpolate(3);
     }
-
-    std::ofstream writing_file;
-    try{
-        writing_file.open("path.txt");
-    }catch(const std::exception& e){
-        std::cerr << "can't open path.txt" << std::endl;
-    }
-
     std::vector<ArmState> traj;
     for(auto& tmp: path->getStates()){
         auto *tmp2 = (*tmp).as<ob::RealVectorStateSpace::StateType>()->values;
@@ -411,9 +317,5 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
 
     std::vector<ArmState> traj_pre = path_func(traj, 0.7);  // スプライン補間 (パラメータ空間)
     std::vector<ArmState>  r_theta_trajectory = path_func_xy(traj_pre, l_min, l_max, d_max);  // スプライン補間 (xy)
-    for(auto& tmp: r_theta_trajectory){
-        writing_file << tmp.theta << " " << tmp.r << " " << tmp.phi << std::endl;
-    }
-    writing_file.close();
     return std::make_pair(r_theta_trajectory, true);
 }
