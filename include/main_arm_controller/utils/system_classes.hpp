@@ -19,9 +19,14 @@
 
 enum class ControllerState{
     CTRL_HUMAN,
-    CTRL_BEFORE_GENERATING,  // パス生成前
-    CTRL_GENERATING,  // パス生成中
-    CTRL_FOLLOWING,  // パスが生成されて、追従を始めたあと
+    CTRL_AUTO,  // 自動モード
+};
+
+enum class AutoState{
+    AUTO_WAITING,
+    AUTO_BEFORE_GENERATING,
+    AUTO_GENERATING,
+    AUTO_FOLLOWING,
 };
 
 class MainArmState {

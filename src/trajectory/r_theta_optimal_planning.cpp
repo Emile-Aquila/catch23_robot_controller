@@ -254,6 +254,7 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     // start point
     ob::ScopedState<> start(state_space);  // (theta, r, phi)
     ArmState start_tmp = arm_ik(start_tip);
+    std::cout<<"start: x,y,theta -> " << start_tip.x <<", "<< start_tip.y <<", "<< start_tip.theta <<std::endl;
     std::cout<<"start: r,theta,phi -> " << start_tmp.r <<", "<< start_tmp.theta <<", "<< start_tmp.phi <<std::endl;
     start->as<ob::RealVectorStateSpace::StateType>()->values[0] = start_tmp.theta;
     start->as<ob::RealVectorStateSpace::StateType>()->values[1] = start_tmp.r;
@@ -262,6 +263,7 @@ std::pair<std::vector<ArmState>, bool> plan(const TipState& start_tip, const Tip
     // goal point
     ob::ScopedState<> goal(state_space);  // (1, 1, 1)
     ArmState goal_tmp = arm_ik(goal_tip);
+    std::cout<<"goal: x,y,theta -> " << goal_tip.x <<", "<< goal_tip.y <<", "<< goal_tip.theta <<std::endl;
     std::cout<<"goal: r,theta,phi -> " << goal_tmp.r <<", "<< goal_tmp.theta <<", "<< goal_tmp.phi <<std::endl;
     goal->as<ob::RealVectorStateSpace::StateType>()->values[0] = goal_tmp.theta;
     goal->as<ob::RealVectorStateSpace::StateType>()->values[1] = goal_tmp.r;
@@ -356,6 +358,7 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
     // start point
     ob::ScopedState<> start(state_space);  // (theta, r, phi)
     ArmState start_tmp = arm_ik(start_tip);
+    std::cout<<"start: x,y,theta -> " << start_tip.x <<", "<< start_tip.y <<", "<< start_tip.theta <<std::endl;
     std::cout<<"start: r,theta,phi -> " << start_tmp.r <<", "<< start_tmp.theta <<", "<< start_tmp.phi <<std::endl;
     start->as<ob::RealVectorStateSpace::StateType>()->values[0] = start_tmp.theta;
     start->as<ob::RealVectorStateSpace::StateType>()->values[1] = start_tmp.r;
@@ -364,6 +367,7 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
     // goal point
     ob::ScopedState<> goal(state_space);  // (1, 1, 1)
     ArmState goal_tmp = arm_ik(goal_tip);
+    std::cout<<"goal: x,y,theta -> " << goal_tip.x <<", "<< goal_tip.y <<", "<< goal_tip.theta <<std::endl;
     std::cout<<"goal: r,theta,phi -> " << goal_tmp.r <<", "<< goal_tmp.theta <<", "<< goal_tmp.phi <<std::endl;
     goal->as<ob::RealVectorStateSpace::StateType>()->values[0] = goal_tmp.theta;
     goal->as<ob::RealVectorStateSpace::StateType>()->values[1] = goal_tmp.r;

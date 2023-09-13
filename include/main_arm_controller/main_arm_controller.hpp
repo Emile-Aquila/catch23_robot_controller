@@ -43,11 +43,14 @@ namespace arm_controller{
         void _trajectory_timer_callback();
         void _traj_service_future_callback(rclcpp::Client<traj_srv>::SharedFuture future);  // callback for async_send_request
 
-        // main-arm state
+        // send data
         void _b3m_init(uint8_t servo_id);
         void _send_request_arm_state(const ArmState& req_arm_state);
         void _request_hand_open_close(bool hand_close);
+
+        // change state
         bool _change_controller_state(ControllerState next_state);
+        bool _change_auto_mode_state(AutoState next_state);
 
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
@@ -58,6 +61,7 @@ namespace arm_controller{
         rclcpp::TimerBase::SharedPtr _timer_planner;
 
         ControllerState _controller_state = ControllerState::CTRL_HUMAN;
+        AutoState _auto_state = AutoState::AUTO_WAITING;
         MainArmState _requested_state;
         JoyStickState joy_state;
         TrajectoryData _trajectory_data;
