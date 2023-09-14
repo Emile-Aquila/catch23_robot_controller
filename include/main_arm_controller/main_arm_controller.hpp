@@ -49,6 +49,7 @@ namespace arm_controller{
         void _send_request_arm_state(const ArmState& req_arm_state);
         void _request_hand_open_close(bool hand_close);
         void _hand_unit_timer_callback();
+        void _hand_interval_open_close(bool hand_close);
 
         // change state
         bool _change_controller_state(ControllerState next_state);
@@ -74,6 +75,7 @@ namespace arm_controller{
         HandUnitState _hand_unit_state = HandUnitState::HAND_WAIT;
         HandMotionType _hand_unit_motion_type = HandMotionType::MOTION_NULL;
         JoyStickState joy_state;
+        bool _is_color_red = false;
 
         // data
         MainArmState _requested_state, _feedback_state;

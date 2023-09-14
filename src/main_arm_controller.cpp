@@ -173,28 +173,25 @@ namespace arm_controller{
                         RCLCPP_INFO(this->get_logger(), "[INFO] open hand!");
                     }
                 }
+            }
+            // 一個取り
+            if (this->joy_state.get_button_1_indexed(11, true)) {
+                RCLCPP_INFO(this->get_logger(), "[INFO] ikkodori hand!");
+                // 66.5f -> 0.0f -> -66.5f  // TODO: 実装
+            }
 
-                // 一個取り
-                if (this->joy_state.get_button_1_indexed(11, true)) {
-                    RCLCPP_INFO(this->get_logger(), "[INFO] ikkodori hand!");
-                    // 66.5f -> 0.0f -> -66.5f
-
-                }
-
-                // 妨害機構
-                if (this->joy_state.get_button_1_indexed(12, true)) {
-                    // TODO: 実装
-                    // 妨害の状態と共通エリアの状態は共通にしてある
-                    switch(this->_common_area_state){
-                        case CommonAreaState::COMMON_AREA_DISABLE:
-                            RCLCPP_WARN(this->get_logger(), "[INFO] Common Area Enable");
-                            this->_change_common_area_state(CommonAreaState::COMMON_AREA_ENABLE);
-                            break;
-                        case CommonAreaState::COMMON_AREA_ENABLE:
-                            RCLCPP_WARN(this->get_logger(), "[INFO] Common Area Disable");
-                            this->_change_common_area_state(CommonAreaState::COMMON_AREA_DISABLE);
-                            break;
-                    }
+            // 妨害機構
+            if (this->joy_state.get_button_1_indexed(12, true)) {  // TODO: 実装
+                // 妨害の状態と共通エリアの状態は共通にしてある
+                switch(this->_common_area_state){
+                    case CommonAreaState::COMMON_AREA_DISABLE:
+                        RCLCPP_WARN(this->get_logger(), "[INFO] Common Area Enable");
+                        this->_change_common_area_state(CommonAreaState::COMMON_AREA_ENABLE);
+                        break;
+                    case CommonAreaState::COMMON_AREA_ENABLE:
+                        RCLCPP_WARN(this->get_logger(), "[INFO] Common Area Disable");
+                        this->_change_common_area_state(CommonAreaState::COMMON_AREA_DISABLE);
+                        break;
                 }
             }
         };
@@ -231,8 +228,10 @@ namespace arm_controller{
 
         rclcpp::sleep_for(100ms);
         _b3m_init(wrist_servo_id);  // init b3m
-        _b3m_init(ikko_servo_id);  // init b3m
+        rclcpp::sleep_for(100ms);
         _b3m_init(hand_interval_id);  // init b3m
+        rclcpp::sleep_for(100ms);
+//        _b3m_init(ikko_servo_id);  // init b3m
 
         _timer_planner = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
         _timer_hand_unit = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_hand_unit_timer_callback, this));
@@ -319,15 +318,15 @@ namespace arm_controller{
 
     void ArmControllerNode::_b3m_init(uint8_t servo_id) {  // b3mのinit
         _pub_b3m->publish(gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 動作モードをfreeに
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(50ms);
         _pub_b3m->publish(gen_b3m_write_msg(servo_id, 0x02, 0x28)); // 位置制御モードに
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(50ms);
         _pub_b3m->publish(gen_b3m_write_msg(servo_id, 0x00, 0x29)); // 軌道生成タイプ：Normal (最速で回転)
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(50ms);
         _pub_b3m->publish(gen_b3m_write_msg(servo_id, 0x00, 0x5C)); // PIDの設定を位置制御のプリセットに合わせる
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(50ms);
         _pub_b3m->publish(gen_b3m_write_msg(servo_id, 0x00, 0x28)); // 動作モードをNormalに
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(50ms);
     }
 
     void ArmControllerNode::_send_request_arm_state(const ArmState &req_arm_state) {
@@ -341,7 +340,7 @@ namespace arm_controller{
         _pub_micro_ros_theta->publish(tgt_data);
 
         _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, req_arm_state.z));
-        _pub_b3m->publish(gen_b3m_set_pos_msg(wrist_servo_id, rad_to_deg(req_arm_state.phi), 0));
+        _pub_b3m->publish(gen_b3m_set_pos_msg(wrist_servo_id, -rad_to_deg(req_arm_state.phi), 0));
     }
 
     void ArmControllerNode::_request_hand_open_close(bool hand_close) {
@@ -474,9 +473,13 @@ namespace arm_controller{
                 this->_send_request_arm_state(arm_ik(tip_state_now));
                 if((this->_feedback_state.tip_state().z - tip_state_now.z) < 5.0){  // 誤差が5mm以下
                     this->_change_hand_unit_state(HandUnitState::HAND_WAIT);
-                    traj_targets = {TipState(tip_state_now.x-150.0f, tip_state_now.y, tip_state_now.z, tip_state_now.theta)};
-                    // TODO: 赤コートの場合の処理
-                    this->_request_trajectory_following(traj_targets, false);
+                    if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_SHOOTER) {
+                        traj_targets = {
+                                tip_state_now,
+                                TipState(tip_state_now.x - 150.0f, tip_state_now.y, tip_state_now.z, tip_state_now.theta)
+                        };  // TODO: 赤コートの場合の処理
+                        this->_request_trajectory_following(traj_targets, false);
+                    }
                 }  // feedbackによる遷移処理
                 break;
         }

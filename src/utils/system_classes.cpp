@@ -146,9 +146,11 @@ PositionSelector get_position_selector_shooter(bool is_red){
     for(int i=0; i<ys.size(); i++){
         double y = ys[i], theta = thetas[i];
         TipStates vec = {
+                TipState(x_prepare, 0.0, 0.0, deg_to_rad(theta)),
                 TipState(x_prepare, y, 0.0, deg_to_rad(theta)),
                 TipState(x_release, y, 0.0, deg_to_rad(theta)),
         }, vec2 = {
+                TipState(x_prepare, 0.0, 0.0, deg_to_rad(theta)),
                 TipState(x_prepare, y - 30.0, 0.0, deg_to_rad(theta)),
                 TipState(x_release, y - 30.0, 0.0, deg_to_rad(theta)),
         };
@@ -171,12 +173,12 @@ PositionSelector get_position_selector_shooter(bool is_red){
 PositionSelector get_position_selector_targets(bool is_red){
     double y = 392.5;
 
-    TipState p4(500.0, y, 0.0, deg_to_rad(-45.0));
-    TipState p5(300.0, y, 0.0, deg_to_rad(-45.0));
-    TipState p6(100.0, y, 0.0, deg_to_rad(-45.0));
-    TipState p7(-100.0, y, 0.0, deg_to_rad(-45.0));
-    TipState p8(-300.0, y, 0.0, deg_to_rad(-45.0));
-    TipState p9(-500.0, y, 0.0, deg_to_rad(-45.0));
+    TipState p4(500.0, y, 0.0, deg_to_rad(45.0));
+    TipState p5(300.0, y, 0.0, deg_to_rad(45.0));
+    TipState p6(100.0, y, 0.0, deg_to_rad(225.0));
+    TipState p7(-100.0, y, 0.0, deg_to_rad(225.0));
+    TipState p8(-300.0, y, 0.0, deg_to_rad(225.0));
+    TipState p9(-500.0, y, 0.0, deg_to_rad(225.0));
 
 //    TipState p4(500.0, y, 0.0, deg_to_rad(45.0));
 //    TipState p5(300.0, y, 0.0, deg_to_rad(45.0));

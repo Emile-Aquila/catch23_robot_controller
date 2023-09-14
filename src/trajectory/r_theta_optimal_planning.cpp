@@ -338,7 +338,7 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
     planner->checkValidity();
 
 //    ob::PlannerStatus solved = planner->ob::Planner::solve(0.5);
-    ob::PlannerStatus solved = planner->ob::Planner::solve(0.3);
+    ob::PlannerStatus solved = planner->ob::Planner::solve(0.4);
     if (!solved) {
         std::cout << "No solution found" << std::endl;
         return std::make_pair(std::vector<ArmState>{}, false);

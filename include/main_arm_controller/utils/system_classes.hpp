@@ -36,11 +36,10 @@ enum class CommonAreaState{
 };
 
 enum class HandUnitState {  // handの手先の状態 (上下)
-    HAND_WAIT,  // workを持っていない状態でz=0
+    HAND_WAIT,  // z=0
     HAND_BEFORE, // handをおろし始めた状態
     HAND_MOTION,   // 把持動作 or 開放動作
     HAND_AFTER,  // handを持ち上げる動作
-    HAND_CARRY,  // workを持っている状態でz=0
 };
 
 enum class HandMotionType{
