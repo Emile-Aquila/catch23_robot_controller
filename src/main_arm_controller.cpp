@@ -43,15 +43,17 @@ namespace arm_controller{
     : Node("main_arm_controller_component", options) {
         uint8_t ikko_servo_id = 0;
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
+        uint8_t hand_interval_id = 3;
         _requested_state = MainArmState(_tip_state_origin, false);  // 初期位置
 
         _field_tip_pos = PositionSelector(get_position_selector_targets(false));  // TODO: 実装
         _common_tip_pos = PositionSelector(get_position_selector_common(false));
         _shooter_tip_pos = PositionSelector(get_position_selector_shooter(false));
+        _is_color_red = false;
 
 
         // xy座標で動かす
-        auto joy_callback_xy = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
+        auto joy_callback_xy = [this, ikko_servo_id, hand_interval_id](const sensor_msgs::msg::Joy &msg) -> void {
             this->joy_state.set(msg);
             // コントローラー入力の処理
             auto [d_x, d_y] = this->joy_state.get_joystick_left_xy();
@@ -110,6 +112,7 @@ namespace arm_controller{
                         }
                     }
                     if(!is_completed) {
+                        this->_hand_interval_open_close(false);  // open
                         this->_request_trajectory_following(
                                 target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
                     }else{// _field_tip_posが空
@@ -127,6 +130,7 @@ namespace arm_controller{
                         target_points.insert(target_points.begin(), this->_requested_state.tip_state());
                     }
                     if(!is_completed){
+                        this->_hand_interval_open_close(true);  // close
                         this->_request_trajectory_following(target_points, false);  // こっちはfalseの方が良いかも?
                     }else{ // _shooter_tip_posが空
                         RCLCPP_WARN(this->get_logger(), "****[WARN]**** shooter_tip_pos is completed.");
@@ -179,6 +183,7 @@ namespace arm_controller{
 
                 // 妨害機構
                 if (this->joy_state.get_button_1_indexed(12, true)) {
+                    // TODO: 実装
                     // 妨害の状態と共通エリアの状態は共通にしてある
                     switch(this->_common_area_state){
                         case CommonAreaState::COMMON_AREA_DISABLE:
@@ -227,6 +232,7 @@ namespace arm_controller{
         rclcpp::sleep_for(100ms);
         _b3m_init(wrist_servo_id);  // init b3m
         _b3m_init(ikko_servo_id);  // init b3m
+        _b3m_init(hand_interval_id);  // init b3m
 
         _timer_planner = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
         _timer_hand_unit = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_hand_unit_timer_callback, this));
@@ -244,7 +250,10 @@ namespace arm_controller{
                 if(i==0){
                     request->waypoints.emplace_back(convert_tip_state(this->_traj_target_points[i]));
                 }else{
-                    if(this->_traj_target_points[i-1] == this->_traj_target_points[i]){ // 同じ点が入っている場合は除去
+                    if(this->_traj_target_points[i-1].x == this->_traj_target_points[i].x
+                            && this->_traj_target_points[i-1].y == this->_traj_target_points[i].y
+                            && this->_traj_target_points[i-1].theta == this->_traj_target_points[i].theta){
+                        // 同じ点が入っている場合は除去
                         RCLCPP_WARN(this->get_logger(), "****[WARN]**** Duplicated Points");
                         continue;
                     }
@@ -371,7 +380,7 @@ namespace arm_controller{
 
     bool ArmControllerNode::_change_hand_unit_state(HandUnitState next_state) {
         if(_planner_state != PlannerState::PLANNER_WAITING){
-            if(next_state != HandUnitState::HAND_WAIT && next_state != HandUnitState::HAND_CARRY)return false;
+            if(next_state != HandUnitState::HAND_WAIT)return false;
         }
         this->_hand_unit_state = next_state;
         switch(next_state) {
@@ -386,9 +395,6 @@ namespace arm_controller{
                 break;
             case HandUnitState::HAND_AFTER:
                 RCLCPP_WARN(this->get_logger(), "HAND_AFTER");
-                break;
-            case HandUnitState::HAND_CARRY:
-                RCLCPP_WARN(this->get_logger(), "HAND_CARRY");
                 break;
         }
         return true;
@@ -418,6 +424,7 @@ namespace arm_controller{
 
     void ArmControllerNode::_hand_unit_timer_callback() {
         TipState tip_state_now = this->_requested_state.tip_state();
+        TipStates traj_targets;
         switch (this->_hand_unit_state) {
             case HandUnitState::HAND_WAIT:
                 // no action
@@ -456,7 +463,7 @@ namespace arm_controller{
                         this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_COMMON){
                     _request_hand_open_close(true);  // close
                 }
-                if(this->_time_counter_hand_motion.check_time(1000)){  // TODO: 3s待つ
+                if(this->_time_counter_hand_motion.check_time(1000)){  // 1s待つ
                     this->_time_counter_hand_motion.disable();
                     this->_change_hand_unit_state(HandUnitState::HAND_AFTER);
                 }
@@ -466,13 +473,20 @@ namespace arm_controller{
                 tip_state_now.z = 0.0f;
                 this->_send_request_arm_state(arm_ik(tip_state_now));
                 if((this->_feedback_state.tip_state().z - tip_state_now.z) < 5.0){  // 誤差が5mm以下
-                    this->_change_hand_unit_state(HandUnitState::HAND_CARRY);
+                    this->_change_hand_unit_state(HandUnitState::HAND_WAIT);
+                    traj_targets = {TipState(tip_state_now.x-150.0f, tip_state_now.y, tip_state_now.z, tip_state_now.theta)};
+                    // TODO: 赤コートの場合の処理
+                    this->_request_trajectory_following(traj_targets, false);
                 }  // feedbackによる遷移処理
                 break;
-            case HandUnitState::HAND_CARRY:
-                // no action
-                break;
         }
+    }
+
+    void ArmControllerNode::_hand_interval_open_close(bool hand_close) {
+        uint8_t hand_interval_id = 3;
+        double target_pos = rad_to_deg(16.0/3.0 + M_PI_4) / 2.0;
+        if(hand_close)target_pos = -target_pos;
+        _pub_b3m->publish(gen_b3m_set_pos_msg(hand_interval_id, target_pos, 0));
     }
 }
 
