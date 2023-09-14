@@ -44,11 +44,14 @@ namespace arm_controller{
         uint8_t ikko_servo_id = 0;
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
         _requested_state = MainArmState(_tip_state_origin, false);  // 初期位置
+        _field_tip_pos = PositionSelector(get_position_selector_targets(true));  // TODO: 実装
+        _shooter_tip_pos = PositionSelector(get_position_selector_shooter(true));  // TODO: 実装
+
 
         // xy座標で動かす
         auto joy_callback_xy = [this, ikko_servo_id](const sensor_msgs::msg::Joy &msg) -> void {
             this->joy_state.set(msg);
-
+            // コントローラー入力の処理
             auto [d_x, d_y] = this->joy_state.get_joystick_left_xy();
             auto [d_theta, d_z] = this->joy_state.get_joystick_right_xy();
             if(d_z > 0.0f)d_z = 1.0f;
@@ -68,7 +71,9 @@ namespace arm_controller{
                 }
             }
 
-            if(this->_controller_state == ControllerState::CTRL_HUMAN) { // CTRL_HUMANの動作
+
+            if(this->_controller_state == ControllerState::CTRL_HUMAN && this->_planner_state == PlannerState::PLANNER_WAITING) {
+                // CTRL_HUMANの動作
                 TipState next_tip_state = this->_requested_state.tip_state() + TipState(d_x * 15.0f, d_y * 15.0f, d_z * 4.5f, d_theta * 2.0f * M_PI / 180.0f);
                 ArmState next_arm_state = arm_ik(next_tip_state);
                 if (next_arm_state == clip_arm_state(next_arm_state) && (abs(next_arm_state.theta- this->_requested_state.arm_state().theta) <= M_PI)) {
@@ -83,53 +88,37 @@ namespace arm_controller{
                 } else {
                     RCLCPP_WARN(this->get_logger(), "Invalid input!");
                 }
-                this->_send_request_arm_state(this->_requested_state.arm_state());
+                this->_send_request_arm_state(this->_requested_state.arm_state());  // 人力でロボットを動かす場合の処理
 
-            }else if(this->_controller_state == ControllerState::CTRL_AUTO) {  // CTRL_AUTOの動作
-                switch (this->_auto_state) {
-                    case PlannerState::PLANNER_WAITING:
-                        // TODO: button押されたときの処理
-                        if(this->joy_state.get_button_1_indexed(5 , true)) {  // ワークの位置へ
-                            this->_traj_target_points = {
-                                    this->_requested_state.tip_state(),
-                                    TipState(-505.0, 415.0, 0.0, M_PI/4.0f + M_PI_2)
-                            };
-                            this->_change_planner_state(PlannerState::PLANNER_BEFORE_GENERATING);
-                        }else if(this->joy_state.get_button_1_indexed(6, true)){  // シューティングボックスへ
-                            this->_traj_target_points = {
-                                    this->_requested_state.tip_state(),
-                                    TipState(410.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
-                                    TipState(410.0 + 100.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
-                            };
-                            this->_change_planner_state(PlannerState::PLANNER_BEFORE_GENERATING);
-                        }
+            }else if(this->_controller_state == ControllerState::CTRL_AUTO) {
+                // CTRL_AUTOの動作
+                // TODO: 実装
+                if(this->joy_state.get_button_1_indexed(5 , true)) {  // ワークの位置へ
+                    TipStates target_points = {
+                            this->_requested_state.tip_state(),
+                            TipState(-505.0, 415.0, 0.0, M_PI/4.0f + M_PI_2)
+                    };
+                    this->_request_trajectory_following(target_points);
+                }else if(this->joy_state.get_button_1_indexed(6, true)){  // シューティングボックスへ
+                    TipStates target_points = {
+                            this->_requested_state.tip_state(),
+                            TipState(410.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
+                            TipState(410.0 + 100.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
+                    };
+                    this->_request_trajectory_following(target_points);
+                }
 
-                        if(this->joy_state.get_button_1_indexed(9, true)) {  // 原点に戻る
-                            RCLCPP_WARN(this->get_logger(), "[AUTO] return to origin!");
-                            if(this->_requested_state.tip_state() != this->_tip_state_origin) {
-                                _traj_target_points = {this->_requested_state.tip_state(), this->_tip_state_origin};
-                                this->_change_planner_state(PlannerState::PLANNER_BEFORE_GENERATING);
-                            }
-                        }
-                        break;
-                    case PlannerState::PLANNER_BEFORE_GENERATING:  // 経路生成前&生成中
-                        // no action
-                        break;
-                    case PlannerState::PLANNER_GENERATING:
-                        // no action
-                        break;
-                    case PlannerState::PLANNER_FOLLOWING:  // 経路追従中の処理
-                        RCLCPP_INFO(this->get_logger(), "[INFO] path following...");
-                        if(!(this->_trajectory_data.complete())) {  // 経路追従中
-                            this->_requested_state.set_state(this->_trajectory_data.get_front());
-                        }else{  // 経路追従が終わった状態
-                            this->_change_planner_state(PlannerState::PLANNER_WAITING);
-                        }
-                        this->_send_request_arm_state(this->_requested_state.arm_state());
-                        break;
+                if(this->joy_state.get_button_1_indexed(9, true)) {  // 原点に戻る
+                    RCLCPP_WARN(this->get_logger(), "[AUTO] return to origin!");
+                    if(this->_requested_state.tip_state() != this->_tip_state_origin) {
+                        TipStates target_points = {this->_requested_state.tip_state(), this->_tip_state_origin};
+                        this->_request_trajectory_following(target_points);
+                    }
                 }
             }
 
+
+            /* その他アクチュエーターの動作 */
             // handの開閉
             if(this->joy_state.get_button_1_indexed(6, true)){
                 if(this->_requested_state.is_hand_open()){
@@ -184,24 +173,28 @@ namespace arm_controller{
         _b3m_init(wrist_servo_id);  // init b3m
         _b3m_init(ikko_servo_id);  // init b3m
 
-        _timer_planner = this->create_wall_timer(30ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
+        _timer_planner = this->create_wall_timer(40ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
         RCLCPP_WARN(this->get_logger(), "[START] main_arm_controller");
     }
 
     ArmControllerNode::~ArmControllerNode(){}
 
-    void ArmControllerNode::_trajectory_timer_callback(){
-        if(this->_controller_state == ControllerState::CTRL_HUMAN)return;
-        if(this->_auto_state == PlannerState::PLANNER_BEFORE_GENERATING){
+    void ArmControllerNode::_trajectory_timer_callback(){  // 経路生成 & 追従
+//        if(this->_controller_state == ControllerState::CTRL_HUMAN)return;
+        if(this->_planner_state == PlannerState::PLANNER_BEFORE_GENERATING){  // 経路生成
             auto request = std::make_shared<traj_srv::Request>();
             if(this->_traj_target_points.size() < 2)RCLCPP_ERROR(this->get_logger(), "[ERROR] _traj_target_points.size() < 2");
-            for(const auto& tmp: this->_traj_target_points){
-                request->waypoints.emplace_back(convert_tip_state(tmp));
+            for(size_t i=0; i<this->_traj_target_points.size(); i++){
+                if(i==0){
+                    request->waypoints.emplace_back(convert_tip_state(this->_traj_target_points[i]));
+                }else{
+                    if(this->_traj_target_points[i-1] == this->_traj_target_points[i]){ // 同じ点が入っている場合は除去
+                        RCLCPP_WARN(this->get_logger(), "[WARN] Duplicated Points");
+                        continue;
+                    }
+                    request->waypoints.emplace_back(convert_tip_state(this->_traj_target_points[i]));
+                }
             }
-//            request->waypoints = {
-//                    convert_tip_state(this->_traj_target_points.front()),
-//                    convert_tip_state(this->_traj_target_points.back())
-//            };
 
             request->step_min = 10.0f;
             request->step_max = 90.0f;
@@ -212,6 +205,15 @@ namespace arm_controller{
                     request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));
             // serviceのthreadを分ける必要がある
             this->_change_planner_state(PlannerState::PLANNER_GENERATING);
+
+        }else if(this->_planner_state == PlannerState::PLANNER_FOLLOWING){  // 経路追従
+            if(!(this->_trajectory_data.complete())) {  // 経路追従中
+                this->_requested_state.set_state(this->_trajectory_data.get_front());
+            }else{  // 経路追従が終わった状態
+                RCLCPP_INFO(this->get_logger(), "[INFO] Path following completed!");
+                this->_change_planner_state(PlannerState::PLANNER_WAITING);
+            }
+            this->_send_request_arm_state(this->_requested_state.arm_state());
         }
     }
 
@@ -227,7 +229,8 @@ namespace arm_controller{
                 return clip_arm_state(arm_state);
             });
             _trajectory_data.set(tmp_traj);
-            RCLCPP_INFO(this->get_logger(), "[INFO] trajectory generated!!");
+            RCLCPP_INFO(this->get_logger(), "[INFO] Trajectory generated!!");
+            RCLCPP_INFO(this->get_logger(), "[INFO] Start path following!");
             this->_change_planner_state(PlannerState::PLANNER_FOLLOWING);
         }else{
             RCLCPP_ERROR(this->get_logger(), "[ERROR] generated trajectory is invalid!");
@@ -248,10 +251,10 @@ namespace arm_controller{
     }
 
     bool ArmControllerNode::_change_planner_state(PlannerState next_state) {
-        if(_auto_state == PlannerState::PLANNER_FOLLOWING && next_state == PlannerState::PLANNER_WAITING){
+        if(_planner_state == PlannerState::PLANNER_FOLLOWING && next_state == PlannerState::PLANNER_WAITING){
             _trajectory_data.clear();
         }
-        _auto_state = next_state;
+        _planner_state = next_state;
         return false;
     }
 
@@ -284,6 +287,17 @@ namespace arm_controller{
         _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 1, 0.0f, hand_close));
         _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 0, 0.0f, hand_close));
         _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 2, 0.0f, hand_close));
+    }
+
+    bool ArmControllerNode::_request_trajectory_following(std::vector<TipState> &traj_target_points) {
+        if(this->_planner_state == PlannerState::PLANNER_WAITING){
+            this->_traj_target_points.clear();
+            std::copy(traj_target_points.begin(), traj_target_points.end(), std::back_inserter(this->_traj_target_points));
+            this->_change_planner_state(PlannerState::PLANNER_BEFORE_GENERATING);
+            return true;
+        }else{
+            return false;
+        }
     }
 }
 

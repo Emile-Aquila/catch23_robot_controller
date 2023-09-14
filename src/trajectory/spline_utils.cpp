@@ -139,7 +139,7 @@ std::vector<ArmState> path_func_xy(const std::vector<ArmState>& waypoints, doubl
         double d = f_calc_d(n);
         double d_for_m = (l_max - l_min) / (double)(n);
         int m = std::max(0, (int)floor((t_range - 2.0 * l_min * (double) n - d_for_m * (double) (n * (n - 1))) / l_max));
-        std::cout << "m,n,d: " << m <<", " << n << ", " << d <<", " << d_for_m << std::endl;
+        std::cout << "[DEBUG] m,n,d: " << m <<", " << n << ", " << d << std::endl;
         double t = t_min;
         for(int i=0; i<(2*n+m); i++){
             double dt;
@@ -154,7 +154,6 @@ std::vector<ArmState> path_func_xy(const std::vector<ArmState>& waypoints, doubl
             double theta = thetas[0] + (thetas[thetas.size()-1] - thetas[0]) * (t-t_min) / t_range;
             ans.emplace_back(arm_ik(TipState(spline_xs(t), spline_ys(t), 0.0, theta)));
         }
-        std::cout << "[DEBUG] PLANNING --> t_max, t: " << t_max << "," << t << "," << ans.size() << std::endl;
     }
 
     ans[ans.size()-1] = waypoints[waypoints.size()-1];

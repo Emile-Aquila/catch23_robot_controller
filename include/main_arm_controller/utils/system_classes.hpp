@@ -61,11 +61,13 @@ public:
 };
 
 
+
 class PositionSelector{
 private:
     std::vector<TipStates> _tip_states_list;
     size_t id_now = 0;
 public:
+    PositionSelector() = default;
     PositionSelector(std::vector<TipStates>& tip_states_list);
     int size();
     TipStates next();
