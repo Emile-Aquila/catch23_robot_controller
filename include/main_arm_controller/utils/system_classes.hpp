@@ -30,6 +30,11 @@ enum class PlannerState{
     PLANNER_FOLLOWING,
 };
 
+enum class CommonAreaState{
+    COMMON_AREA_ENABLE,  // 共通エリア入って良いよ
+    COMMON_AREA_DISABLE,
+};
+
 class MainArmState {
 private:
     ArmState _arm_state;

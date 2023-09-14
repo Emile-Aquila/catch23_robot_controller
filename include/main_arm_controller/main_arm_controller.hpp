@@ -52,6 +52,7 @@ namespace arm_controller{
         // change state
         bool _change_controller_state(ControllerState next_state);
         bool _change_planner_state(PlannerState next_state);
+        bool _change_common_area_state(CommonAreaState next_state);
 
         // ROS
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
@@ -65,13 +66,14 @@ namespace arm_controller{
         // states
         ControllerState _controller_state = ControllerState::CTRL_HUMAN;
         PlannerState _planner_state = PlannerState::PLANNER_WAITING;
+        CommonAreaState _common_area_state = CommonAreaState::COMMON_AREA_DISABLE;  // 共通エリアの状態と妨害の状態を共通化してる
         JoyStickState joy_state;
 
         // data
         MainArmState _requested_state;
         TrajectoryData _trajectory_data;
         std::vector<TipState> _traj_target_points;
-        bool _traj_is_common;
+        bool _traj_enter_common_area_is_enable;
         PositionSelector _field_tip_pos, _common_tip_pos, _shooter_tip_pos;
 
         const TipState _tip_state_origin = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置

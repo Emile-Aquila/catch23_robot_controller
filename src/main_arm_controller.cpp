@@ -32,7 +32,7 @@ ArmState clip_arm_state(const ArmState& arm_state) {
     ans.r = clip_f(arm_state.r, min_r, max_r);
     ans.theta = clip_f(arm_state.theta, min_theta, max_theta);
     ans.z = clip_f(arm_state.z, 0.0f, 225.0f);
-    ans.phi = clip_f(arm_state.phi, deg_to_rad(-97.0f), deg_to_rad(110.0f));  // TODO: 実装
+    ans.phi = clip_f(arm_state.phi, deg_to_rad(-97.0f), deg_to_rad(110.0f));
     return ans;
 }
 
@@ -44,9 +44,10 @@ namespace arm_controller{
         uint8_t ikko_servo_id = 0;
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
         _requested_state = MainArmState(_tip_state_origin, false);  // 初期位置
+
         _field_tip_pos = PositionSelector(get_position_selector_targets(true));  // TODO: 実装
-        _common_tip_pos = PositionSelector(get_position_selector_targets(true));  // TODO: 実装
-        _shooter_tip_pos = PositionSelector(get_position_selector_shooter(true));  // TODO: 実装
+        _common_tip_pos = PositionSelector(get_position_selector_targets(true));
+        _shooter_tip_pos = PositionSelector(get_position_selector_shooter(true));
 
 
         // xy座標で動かす
@@ -99,8 +100,13 @@ namespace arm_controller{
                             TipState(-505.0, 415.0, 0.0, M_PI/4.0f + M_PI_2)
                     };
                     // TODO: 共通エリア侵入時の処理
-//                    target_points = this->_field_tip_pos.next();
+                    if(this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE){
+
+                    }else{
+                        target_points = this->_field_tip_pos.next();
+                    }
                     this->_request_trajectory_following(target_points, false);
+
                 }else if(this->joy_state.get_button_1_indexed(6, true)){  // シューティングボックスへ
                     TipStates target_points = {
                             this->_requested_state.tip_state(),
@@ -144,6 +150,17 @@ namespace arm_controller{
 
                 // 妨害機構
                 if (this->joy_state.get_button_1_indexed(12, true)) {
+                    // 妨害の状態と共通エリアの状態は共通にしてある
+                    switch(this->_common_area_state){
+                        case CommonAreaState::COMMON_AREA_DISABLE:
+                            RCLCPP_WARN(this->get_logger(), "[INFO] Common Area Enable");
+                            this->_change_common_area_state(CommonAreaState::COMMON_AREA_ENABLE);
+                            break;
+                        case CommonAreaState::COMMON_AREA_ENABLE:
+                            RCLCPP_WARN(this->get_logger(), "[INFO] Common Area Disable");
+                            this->_change_common_area_state(CommonAreaState::COMMON_AREA_DISABLE);
+                            break;
+                    }
                 }
             }
         };
@@ -193,7 +210,7 @@ namespace arm_controller{
                     request->waypoints.emplace_back(convert_tip_state(this->_traj_target_points[i]));
                 }else{
                     if(this->_traj_target_points[i-1] == this->_traj_target_points[i]){ // 同じ点が入っている場合は除去
-                        RCLCPP_WARN(this->get_logger(), "[WARN] Duplicated Points");
+                        RCLCPP_WARN(this->get_logger(), "****[WARN]**** Duplicated Points");
                         continue;
                     }
                     request->waypoints.emplace_back(convert_tip_state(this->_traj_target_points[i]));
@@ -203,7 +220,7 @@ namespace arm_controller{
             request->step_min = 10.0f;
             request->step_max = 90.0f;
             request->d_step_max = 20.0f;
-            request->is_common = this->_traj_is_common;
+            request->is_common = this->_traj_enter_common_area_is_enable;
 
             auto future_res = _traj_client->async_send_request(
                     request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));
@@ -228,7 +245,7 @@ namespace arm_controller{
             std::transform(ans_path.begin(), ans_path.end(), std::back_inserter(tmp_traj), [this](const auto& tmp){
                 ArmState arm_state = convert_arm_state(tmp);
                 if(clip_arm_state(arm_state) != arm_state){
-                    RCLCPP_WARN(this->get_logger(), "[WARN] trajectory clipped! : (%lf, %lf, %lf)", arm_state.r, arm_state.theta, arm_state.phi);
+                    RCLCPP_WARN(this->get_logger(), "****[WARN]**** trajectory clipped! : (%lf, %lf, %lf)", arm_state.r, arm_state.theta, arm_state.phi);
                 }
                 return clip_arm_state(arm_state);
             });
@@ -292,12 +309,23 @@ namespace arm_controller{
         if(this->_planner_state == PlannerState::PLANNER_WAITING){
             this->_traj_target_points.clear();
             std::copy(traj_target_points.begin(), traj_target_points.end(), std::back_inserter(this->_traj_target_points));
-            this->_traj_is_common = is_common;
+            this->_traj_enter_common_area_is_enable = is_common;
             this->_change_planner_state(PlannerState::PLANNER_BEFORE_GENERATING);
             return true;
         }else{
             return false;
         }
+    }
+
+    bool ArmControllerNode::_change_common_area_state(CommonAreaState next_state) {
+        if(this->_common_area_state == next_state)return false;
+        if(next_state == CommonAreaState::COMMON_AREA_ENABLE){
+            // TODO: アクチュエーターの動作実装
+        }else{
+            // TODO: アクチュエーターの動作実装
+        }
+        this->_common_area_state = next_state;
+        return true;
     }
 }
 
