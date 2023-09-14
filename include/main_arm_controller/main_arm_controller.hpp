@@ -40,7 +40,7 @@ namespace arm_controller{
         using traj_srv = catch23_robot_controller::srv::ArmTrajectorySrv;
 
         // trajectory
-        bool _request_trajectory_following(std::vector<TipState>& traj_target_points);  // 問題なく移行出来た場合にはtrueを返す
+        bool _request_trajectory_following(std::vector<TipState>& traj_target_points, bool is_common);  // 問題なく移行出来た場合にはtrueを返す
         void _trajectory_timer_callback();
         void _traj_service_future_callback(rclcpp::Client<traj_srv>::SharedFuture future);  // callback for async_send_request
 
@@ -71,7 +71,8 @@ namespace arm_controller{
         MainArmState _requested_state;
         TrajectoryData _trajectory_data;
         std::vector<TipState> _traj_target_points;
-        PositionSelector _field_tip_pos, _shooter_tip_pos;
+        bool _traj_is_common;
+        PositionSelector _field_tip_pos, _common_tip_pos, _shooter_tip_pos;
 
         const TipState _tip_state_origin = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置
     };

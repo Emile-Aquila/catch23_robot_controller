@@ -45,6 +45,7 @@ namespace arm_controller{
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
         _requested_state = MainArmState(_tip_state_origin, false);  // 初期位置
         _field_tip_pos = PositionSelector(get_position_selector_targets(true));  // TODO: 実装
+        _common_tip_pos = PositionSelector(get_position_selector_targets(true));  // TODO: 実装
         _shooter_tip_pos = PositionSelector(get_position_selector_shooter(true));  // TODO: 実装
 
 
@@ -92,27 +93,28 @@ namespace arm_controller{
 
             }else if(this->_controller_state == ControllerState::CTRL_AUTO) {
                 // CTRL_AUTOの動作
-                // TODO: 実装
                 if(this->joy_state.get_button_1_indexed(5 , true)) {  // ワークの位置へ
                     TipStates target_points = {
                             this->_requested_state.tip_state(),
                             TipState(-505.0, 415.0, 0.0, M_PI/4.0f + M_PI_2)
                     };
-                    this->_request_trajectory_following(target_points);
+                    // TODO: 共通エリア侵入時の処理
+//                    target_points = this->_field_tip_pos.next();
+                    this->_request_trajectory_following(target_points, false);
                 }else if(this->joy_state.get_button_1_indexed(6, true)){  // シューティングボックスへ
                     TipStates target_points = {
                             this->_requested_state.tip_state(),
                             TipState(410.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
                             TipState(410.0 + 100.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
                     };
-                    this->_request_trajectory_following(target_points);
+                    this->_request_trajectory_following(target_points, false);
                 }
 
                 if(this->joy_state.get_button_1_indexed(9, true)) {  // 原点に戻る
                     RCLCPP_WARN(this->get_logger(), "[AUTO] return to origin!");
                     if(this->_requested_state.tip_state() != this->_tip_state_origin) {
                         TipStates target_points = {this->_requested_state.tip_state(), this->_tip_state_origin};
-                        this->_request_trajectory_following(target_points);
+                        this->_request_trajectory_following(target_points, false);
                     }
                 }
             }
@@ -201,7 +203,7 @@ namespace arm_controller{
             request->step_min = 10.0f;
             request->step_max = 90.0f;
             request->d_step_max = 20.0f;
-            request->is_common = false; // TODO: 条件に合わせて変更する.
+            request->is_common = this->_traj_is_common;
 
             auto future_res = _traj_client->async_send_request(
                     request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));
@@ -286,10 +288,11 @@ namespace arm_controller{
         _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 2, 0.0f, hand_close));
     }
 
-    bool ArmControllerNode::_request_trajectory_following(std::vector<TipState> &traj_target_points) {
+    bool ArmControllerNode::_request_trajectory_following(std::vector<TipState> &traj_target_points, bool is_common) {
         if(this->_planner_state == PlannerState::PLANNER_WAITING){
             this->_traj_target_points.clear();
             std::copy(traj_target_points.begin(), traj_target_points.end(), std::back_inserter(this->_traj_target_points));
+            this->_traj_is_common = is_common;
             this->_change_planner_state(PlannerState::PLANNER_BEFORE_GENERATING);
             return true;
         }else{

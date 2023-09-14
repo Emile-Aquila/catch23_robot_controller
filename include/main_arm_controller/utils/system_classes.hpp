@@ -65,7 +65,7 @@ public:
 class PositionSelector{
 private:
     std::vector<TipStates> _tip_states_list;
-    size_t id_now = 0;
+    int id_now = -1;
 public:
     PositionSelector() = default;
     PositionSelector(std::vector<TipStates>& tip_states_list);
@@ -74,6 +74,7 @@ public:
     TipStates prev();
     TipStates get();
     void clear();
+    bool complete();
 };
 
 PositionSelector get_position_selector_shooter(bool is_red);

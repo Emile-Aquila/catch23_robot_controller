@@ -3,6 +3,7 @@
 //
 
 #include <main_arm_controller/utils/system_classes.hpp>
+#include <iostream>
 
 
 
@@ -72,7 +73,8 @@ int PositionSelector::size(){
 }
 
 TipStates PositionSelector::next(){
-    id_now = std::min(_tip_states_list.size()-1, id_now+1);
+    id_now = std::min((int)_tip_states_list.size()-1, id_now+1);
+    if(id_now < 0)std::cerr<< "[ERROR] id_now < 0" << std::endl;
     return _tip_states_list[id_now];
 }
 
@@ -82,6 +84,7 @@ TipStates PositionSelector::prev() {
 }
 
 TipStates PositionSelector::get() {
+    if(id_now == -1)return _tip_states_list[0];
     return _tip_states_list[id_now];
 }
 
@@ -90,6 +93,9 @@ void PositionSelector::clear() {
     _tip_states_list.clear();
 }
 
+bool PositionSelector::complete() {
+    return (id_now == ((int)_tip_states_list.size()-1));
+}
 
 
 PositionSelector get_position_selector_shooter(bool is_red){
