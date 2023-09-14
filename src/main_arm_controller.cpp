@@ -94,7 +94,8 @@ namespace arm_controller{
 
             }else if(this->_controller_state == ControllerState::CTRL_AUTO) {
                 // CTRL_AUTOの動作
-                if(this->joy_state.get_button_1_indexed(5 , true)) {  // ワークの位置へ
+                if(this->joy_state.get_button_1_indexed(5 , true)) {
+                    // ワークの位置へ
                     TipStates target_points = {
                             this->_requested_state.tip_state(),
                             TipState(-505.0, 415.0, 0.0, M_PI/4.0f + M_PI_2)
@@ -109,15 +110,31 @@ namespace arm_controller{
                             target_points = this->_field_tip_pos.next();
                         }
                     }
-                    if(!is_completed)this->_request_trajectory_following(target_points, false);
+                    if(!is_completed) {
+                        this->_request_trajectory_following(
+                                target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
+                    }else{// _field_tip_posが空
+                        RCLCPP_WARN(this->get_logger(), "****[WARN]**** field_tip_posが空 is completed.");
+                    }
 
-                }else if(this->joy_state.get_button_1_indexed(6, true)){  // シューティングボックスへ
+                }else if(this->joy_state.get_button_1_indexed(6, true)){
+                    // シューティングボックスへ
                     TipStates target_points = {
                             this->_requested_state.tip_state(),
                             TipState(410.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
                             TipState(410.0 + 100.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
                     };
-                    this->_request_trajectory_following(target_points, false);
+                    bool is_completed = false;
+                    if(this->_shooter_tip_pos.complete()){
+                        is_completed = true;
+                    }else {
+                        target_points = this->_shooter_tip_pos.next();
+                    }
+                    if(!is_completed){
+                        this->_request_trajectory_following(target_points, false);  // こっちはfalseの方が良いかも?
+                    }else{ // _shooter_tip_posが空
+                        RCLCPP_WARN(this->get_logger(), "****[WARN]**** shooter_tip_pos is completed.");
+                    }
                 }
 
                 if(this->joy_state.get_button_1_indexed(9, true)) {  // 原点に戻る
@@ -243,7 +260,7 @@ namespace arm_controller{
     }
 
     void ArmControllerNode::_traj_service_future_callback(rclcpp::Client<traj_srv>::SharedFuture future){
-        if(future.get()->is_feasible){
+        if(future.get()->is_feasible && (future.get()->trajectory.size() < 200)){
             auto ans_path = future.get() -> trajectory;
             std::vector<ArmState> tmp_traj;
             std::transform(ans_path.begin(), ans_path.end(), std::back_inserter(tmp_traj), [this](const auto& tmp){
