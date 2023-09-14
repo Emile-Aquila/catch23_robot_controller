@@ -119,28 +119,30 @@ namespace arm_controller{
 
 
             /* その他アクチュエーターの動作 */
-            // handの開閉
-            if(this->joy_state.get_button_1_indexed(6, true)){
-                if(this->_requested_state.is_hand_open()){
-                    this->_requested_state.set_state(false);
-                    this->_request_hand_open_close(true);  // handを閉じる
-                    RCLCPP_INFO(this->get_logger(), "[INFO] close hand!");
-                }else{
-                    this->_requested_state.set_state(true);
-                    this->_request_hand_open_close(false);  // handを開ける
-                    RCLCPP_INFO(this->get_logger(), "[INFO] open hand!");
+            if(this->_controller_state == ControllerState::CTRL_HUMAN) {
+                // handの開閉
+                if (this->joy_state.get_button_1_indexed(6, true)) {
+                    if (this->_requested_state.is_hand_open()) {
+                        this->_requested_state.set_state(false);
+                        this->_request_hand_open_close(true);  // handを閉じる
+                        RCLCPP_INFO(this->get_logger(), "[INFO] close hand!");
+                    } else {
+                        this->_requested_state.set_state(true);
+                        this->_request_hand_open_close(false);  // handを開ける
+                        RCLCPP_INFO(this->get_logger(), "[INFO] open hand!");
+                    }
                 }
-            }
 
-            // 一個取り
-            if(this->joy_state.get_button_1_indexed(11, true)) {
-                RCLCPP_INFO(this->get_logger(), "[INFO] ikkodori hand!");
-                // 66.5f -> 0.0f -> -66.5f
+                // 一個取り
+                if (this->joy_state.get_button_1_indexed(11, true)) {
+                    RCLCPP_INFO(this->get_logger(), "[INFO] ikkodori hand!");
+                    // 66.5f -> 0.0f -> -66.5f
 
-            }
+                }
 
-            // 妨害機構
-            if(this->joy_state.get_button_1_indexed(12, true)){
+                // 妨害機構
+                if (this->joy_state.get_button_1_indexed(12, true)) {
+                }
             }
         };
 
