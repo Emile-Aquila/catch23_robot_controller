@@ -72,7 +72,7 @@ private:
     std::vector<TipStates> _tip_states_list;
     int id_now = -1;
 public:
-    PositionSelector() = default;
+    PositionSelector();
     PositionSelector(std::vector<TipStates>& tip_states_list);
     int size();
     TipStates next();

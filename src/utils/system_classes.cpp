@@ -68,6 +68,11 @@ PositionSelector::PositionSelector(std::vector<TipStates> &tip_states_list) {
     std::copy(tip_states_list.begin(), tip_states_list.end(), std::back_inserter(this->_tip_states_list));
 }
 
+PositionSelector::PositionSelector(){
+    this->clear();
+}
+
+
 int PositionSelector::size(){
     return (int)(_tip_states_list.size());
 }
@@ -89,20 +94,22 @@ TipStates PositionSelector::get() {
 }
 
 void PositionSelector::clear() {
-    id_now = 0;
+    id_now = -1;
     _tip_states_list.clear();
 }
 
 bool PositionSelector::complete() {
-    return (id_now == ((int)_tip_states_list.size()-1));
+    return (id_now == ((int)_tip_states_list.size()-1) || _tip_states_list.empty());
 }
 
 
 PositionSelector get_position_selector_shooter(bool is_red){
     // TODO: 実装
+    return PositionSelector();
 }
 
 
 PositionSelector get_position_selector_targets(bool is_red){
     // TODO: 実装
+    return PositionSelector();
 }

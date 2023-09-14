@@ -114,7 +114,7 @@ namespace arm_controller{
                         this->_request_trajectory_following(
                                 target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
                     }else{// _field_tip_posが空
-                        RCLCPP_WARN(this->get_logger(), "****[WARN]**** field_tip_posが空 is completed.");
+                        RCLCPP_WARN(this->get_logger(), "****[WARN]**** field_tip_pos is completed.");
                     }
 
                 }else if(this->joy_state.get_button_1_indexed(6, true)){
