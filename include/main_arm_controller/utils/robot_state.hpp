@@ -41,6 +41,10 @@ public:
 };
 
 
+using ArmStates = std::vector<ArmState>;
+using TipStates = std::vector<TipState>;
+
+
 ArmState arm_ik(const TipState& tip_state);
 TipState arm_fk(const ArmState& arm_state);
 

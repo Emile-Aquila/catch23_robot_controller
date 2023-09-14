@@ -87,43 +87,43 @@ namespace arm_controller{
 
             }else if(this->_controller_state == ControllerState::CTRL_AUTO) {  // CTRL_AUTOの動作
                 switch (this->_auto_state) {
-                    case AutoState::AUTO_WAITING:
+                    case PlannerState::PLANNER_WAITING:
                         // TODO: button押されたときの処理
                         if(this->joy_state.get_button_1_indexed(5 , true)) {  // ワークの位置へ
                             this->_traj_target_points = {
                                     this->_requested_state.tip_state(),
                                     TipState(-505.0, 415.0, 0.0, M_PI/4.0f + M_PI_2)
                             };
-                            this->_change_auto_mode_state(AutoState::AUTO_BEFORE_GENERATING);
+                            this->_change_planner_state(PlannerState::PLANNER_BEFORE_GENERATING);
                         }else if(this->joy_state.get_button_1_indexed(6, true)){  // シューティングボックスへ
                             this->_traj_target_points = {
                                     this->_requested_state.tip_state(),
                                     TipState(410.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
                                     TipState(410.0 + 100.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
                             };
-                            this->_change_auto_mode_state(AutoState::AUTO_BEFORE_GENERATING);
+                            this->_change_planner_state(PlannerState::PLANNER_BEFORE_GENERATING);
                         }
 
                         if(this->joy_state.get_button_1_indexed(9, true)) {  // 原点に戻る
                             RCLCPP_WARN(this->get_logger(), "[AUTO] return to origin!");
                             if(this->_requested_state.tip_state() != this->_tip_state_origin) {
                                 _traj_target_points = {this->_requested_state.tip_state(), this->_tip_state_origin};
-                                this->_change_auto_mode_state(AutoState::AUTO_BEFORE_GENERATING);
+                                this->_change_planner_state(PlannerState::PLANNER_BEFORE_GENERATING);
                             }
                         }
                         break;
-                    case AutoState::AUTO_BEFORE_GENERATING:  // 経路生成前&生成中
+                    case PlannerState::PLANNER_BEFORE_GENERATING:  // 経路生成前&生成中
                         // no action
                         break;
-                    case AutoState::AUTO_GENERATING:
+                    case PlannerState::PLANNER_GENERATING:
                         // no action
                         break;
-                    case AutoState::AUTO_FOLLOWING:  // 経路追従中の処理
+                    case PlannerState::PLANNER_FOLLOWING:  // 経路追従中の処理
                         RCLCPP_INFO(this->get_logger(), "[INFO] path following...");
                         if(!(this->_trajectory_data.complete())) {  // 経路追従中
                             this->_requested_state.set_state(this->_trajectory_data.get_front());
                         }else{  // 経路追従が終わった状態
-                            this->_change_auto_mode_state(AutoState::AUTO_WAITING);
+                            this->_change_planner_state(PlannerState::PLANNER_WAITING);
                         }
                         this->_send_request_arm_state(this->_requested_state.arm_state());
                         break;
@@ -192,7 +192,7 @@ namespace arm_controller{
 
     void ArmControllerNode::_trajectory_timer_callback(){
         if(this->_controller_state == ControllerState::CTRL_HUMAN)return;
-        if(this->_auto_state == AutoState::AUTO_BEFORE_GENERATING){
+        if(this->_auto_state == PlannerState::PLANNER_BEFORE_GENERATING){
             auto request = std::make_shared<traj_srv::Request>();
             if(this->_traj_target_points.size() < 2)RCLCPP_ERROR(this->get_logger(), "[ERROR] _traj_target_points.size() < 2");
             for(const auto& tmp: this->_traj_target_points){
@@ -211,7 +211,7 @@ namespace arm_controller{
             auto future_res = _traj_client->async_send_request(
                     request, std::bind(&ArmControllerNode::_traj_service_future_callback, this, std::placeholders::_1));
             // serviceのthreadを分ける必要がある
-            this->_change_auto_mode_state(AutoState::AUTO_GENERATING);
+            this->_change_planner_state(PlannerState::PLANNER_GENERATING);
         }
     }
 
@@ -228,18 +228,18 @@ namespace arm_controller{
             });
             _trajectory_data.set(tmp_traj);
             RCLCPP_INFO(this->get_logger(), "[INFO] trajectory generated!!");
-            this->_change_auto_mode_state(AutoState::AUTO_FOLLOWING);
+            this->_change_planner_state(PlannerState::PLANNER_FOLLOWING);
         }else{
             RCLCPP_ERROR(this->get_logger(), "[ERROR] generated trajectory is invalid!");
             this->_requested_state.set_state(this->_traj_target_points.back());  // 経路が生成できなった場合には位置制御を行う.
             _send_request_arm_state(this->_requested_state.arm_state());
-            this->_change_auto_mode_state(AutoState::AUTO_WAITING);
+            this->_change_planner_state(PlannerState::PLANNER_WAITING);
         }
     }
 
     bool ArmControllerNode::_change_controller_state(ControllerState next_state){
         if(_controller_state != next_state){
-            _change_auto_mode_state(AutoState::AUTO_WAITING);
+            _change_planner_state(PlannerState::PLANNER_WAITING);
             _trajectory_data.clear();
             _traj_target_points.clear();
         }
@@ -247,8 +247,8 @@ namespace arm_controller{
         return true;
     }
 
-    bool ArmControllerNode::_change_auto_mode_state(AutoState next_state) {
-        if(_auto_state == AutoState::AUTO_FOLLOWING && next_state == AutoState::AUTO_WAITING){
+    bool ArmControllerNode::_change_planner_state(PlannerState next_state) {
+        if(_auto_state == PlannerState::PLANNER_FOLLOWING && next_state == PlannerState::PLANNER_WAITING){
             _trajectory_data.clear();
         }
         _auto_state = next_state;

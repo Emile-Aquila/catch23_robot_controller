@@ -22,11 +22,12 @@ enum class ControllerState{
     CTRL_AUTO,  // 自動モード
 };
 
-enum class AutoState{
-    AUTO_WAITING,
-    AUTO_BEFORE_GENERATING,
-    AUTO_GENERATING,
-    AUTO_FOLLOWING,
+
+enum class PlannerState{
+    PLANNER_WAITING,
+    PLANNER_BEFORE_GENERATING,
+    PLANNER_GENERATING,
+    PLANNER_FOLLOWING,
 };
 
 class MainArmState {
@@ -59,5 +60,21 @@ public:
     bool complete();
 };
 
+
+class PositionSelector{
+private:
+    std::vector<TipStates> _tip_states_list;
+    size_t id_now = 0;
+public:
+    PositionSelector(std::vector<TipStates>& tip_states_list);
+    int size();
+    TipStates next();
+    TipStates prev();
+    TipStates get();
+    void clear();
+};
+
+PositionSelector get_position_selector_shooter(bool is_red);
+PositionSelector get_position_selector_targets(bool is_red);
 
 #endif //ROS2_WS_SYSTEM_CLASSES_HPP

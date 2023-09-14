@@ -50,8 +50,9 @@ namespace arm_controller{
 
         // change state
         bool _change_controller_state(ControllerState next_state);
-        bool _change_auto_mode_state(AutoState next_state);
+        bool _change_planner_state(PlannerState next_state);
 
+        // ROS
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr _pub_micro_ros_r, _pub_micro_ros_theta;
@@ -60,10 +61,13 @@ namespace arm_controller{
         rclcpp::Client<traj_srv>::SharedPtr _traj_client;
         rclcpp::TimerBase::SharedPtr _timer_planner;
 
+        // states
         ControllerState _controller_state = ControllerState::CTRL_HUMAN;
-        AutoState _auto_state = AutoState::AUTO_WAITING;
-        MainArmState _requested_state;
+        PlannerState _auto_state = PlannerState::PLANNER_WAITING;
         JoyStickState joy_state;
+
+        // data
+        MainArmState _requested_state;
         TrajectoryData _trajectory_data;
         std::vector<TipState> _traj_target_points;
 

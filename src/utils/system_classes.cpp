@@ -60,3 +60,43 @@ ArmState TrajectoryData::get_front(){
 bool TrajectoryData::complete(){
     return _front_id == _trajectory.size();
 }
+
+
+// Position Selector
+PositionSelector::PositionSelector(std::vector<TipStates> &tip_states_list) {
+    std::copy(tip_states_list.begin(), tip_states_list.end(), std::back_inserter(this->_tip_states_list));
+}
+
+int PositionSelector::size(){
+    return (int)(_tip_states_list.size());
+}
+
+TipStates PositionSelector::next(){
+    id_now = std::min(_tip_states_list.size()-1, id_now+1);
+    return _tip_states_list[id_now];
+}
+
+TipStates PositionSelector::prev() {
+    id_now = std::max(0, (int)id_now-1);
+    return _tip_states_list[id_now];
+}
+
+TipStates PositionSelector::get() {
+    return _tip_states_list[id_now];
+}
+
+void PositionSelector::clear() {
+    id_now = 0;
+    _tip_states_list.clear();
+}
+
+
+
+PositionSelector get_position_selector_shooter(bool is_red){
+    // TODO: 実装
+}
+
+
+PositionSelector get_position_selector_targets(bool is_red){
+    // TODO: 実装
+}
