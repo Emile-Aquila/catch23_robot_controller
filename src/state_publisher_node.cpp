@@ -8,6 +8,8 @@
 #include <main_arm_controller/state_publisher_node.hpp>
 #include <actuator_msgs/msg/c620_feedback.hpp>
 #include <catch23_robot_controller/msg/tip_state.hpp>
+#include <actuator_msgs/msg/actuator_feedback.hpp>
+#include <actuator_msgs/msg/node_type.hpp>
 
 
 using namespace std::chrono_literals;
@@ -25,6 +27,16 @@ namespace arm_controller {
             this->arm_state_tgt.r = msg.target_value;
         };
 
+        auto mcmd_callback = [this](const actuator_msgs::msg::ActuatorFeedback& msg) -> void {
+            if (msg.device.node_type.node_type == actuator_msgs::msg::NodeType::NODE_MCMD3
+                    && msg.device.device_num == 0 && msg.device.node_id == 1) {  // z
+                this->arm_state_fb.z = msg.fb_data;
+            }
+            if (msg.device.node_type.node_type == actuator_msgs::msg::NodeType::NODE_MCMD4
+                    && msg.device.device_num == 0 && msg.device.node_id == 2) {  // TODO: シューター
+//                this->arm_state_fb.z = msg.fb_data;
+            }
+        };
         auto ref_r_callback = [this](const std_msgs::msg::Float32 &msg) -> void {
             this->arm_state_ref.r = msg.data;
         };
@@ -33,8 +45,10 @@ namespace arm_controller {
             this->arm_state_ref.theta = msg.data;
         };
 
+
         theta_sub = this->create_subscription<actuator_msgs::msg::C620Feedback>("c620_theta", 5, theta_callback);
         r_sub = this->create_subscription<actuator_msgs::msg::C620Feedback>("c620_r", 5, r_callback);
+        mcmd_sub = this->create_subscription<actuator_msgs::msg::ActuatorFeedback>("mros_output_mcmd", 10, mcmd_callback);
 
         r_ref = this->create_subscription<std_msgs::msg::Float32>("mros_input_r", 5, ref_r_callback);
         theta_ref = this->create_subscription<std_msgs::msg::Float32>("mros_input_theta", 5, ref_theta_callback);

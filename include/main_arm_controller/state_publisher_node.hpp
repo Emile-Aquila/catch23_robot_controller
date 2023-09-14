@@ -17,6 +17,7 @@
 #include <catch23_robot_controller/msg/tip_state.hpp>
 #include <main_arm_controller/utils/robot_state.hpp>
 #include <actuator_msgs/msg/actuator_msg.hpp>
+#include <actuator_msgs/msg/actuator_feedback.hpp>
 
 
 namespace arm_controller{
@@ -27,6 +28,7 @@ namespace arm_controller{
         ~StatePublisherNode();
     private:
         rclcpp::Subscription<actuator_msgs::msg::C620Feedback>::SharedPtr theta_sub, r_sub;
+        rclcpp::Subscription<actuator_msgs::msg::ActuatorFeedback>::SharedPtr mcmd_sub;
         rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr theta_ref, r_ref;
         rclcpp::Publisher<catch23_robot_controller::msg::TipState>::SharedPtr pub_tip, pub_tip_tgt, pub_tip_ref;
         rclcpp::TimerBase::SharedPtr timer;

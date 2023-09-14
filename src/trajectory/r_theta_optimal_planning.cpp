@@ -48,6 +48,19 @@
 template<class T> using matrix= std::vector<std::vector<T>>;
 
 
+ArmState clip_arm_state(const ArmState& arm_state) {
+    ArmState ans;
+    float min_r = 325.0f, max_r = 975.0f;
+    float min_theta = -M_PI, max_theta = M_PI;
+    ans.r = clip_f(arm_state.r, min_r, max_r);
+    ans.theta = clip_f(arm_state.theta, min_theta, max_theta);
+    ans.z = clip_f(arm_state.z, 0.0f, 225.0f);
+    ans.phi = clip_f(arm_state.phi, deg_to_rad(-97.0f), deg_to_rad(110.0f));
+    return ans;
+}
+
+
+
 ob::PlannerPtr allocatePlanner(ob::SpaceInformationPtr space_info, PlannerType plannerType){
     switch (plannerType){
         case PLANNER_AITSTAR:
@@ -335,17 +348,18 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
     if(path->getStates().size() <= 2){  // スプライン補間は3点以上必要
         path->interpolate(3);
     }
-//    path->interpolate(4);
-//    path->checkAndRepair(10);
+//    path->interpolate();
+    path->checkAndRepair(10);
 
     std::vector<ArmState> traj;
     for(auto& tmp: path->getStates()){
         auto *tmp2 = (*tmp).as<ob::RealVectorStateSpace::StateType>()->values;
         auto [theta, r, phi] = std::make_tuple(tmp2[0], tmp2[1], tmp2[2]);
-        traj.emplace_back(r, theta, 0.0, phi);
+        traj.emplace_back(clip_arm_state(ArmState(r, theta, 0.0, phi)));
     }
 
     std::vector<ArmState> traj_pre = path_func(traj, 0.3);  // スプライン補間 (パラメータ空間)
+    std::for_each(traj_pre.begin(), traj_pre.end(), [](auto& tmp){ tmp = clip_arm_state(tmp);});
     std::vector<ArmState> r_theta_trajectory = path_func_xy(traj_pre, l_min, l_max, d_max);  // スプライン補間 (xy)
     return std::make_pair(r_theta_trajectory, true);
 //    return std::make_pair(traj, true);

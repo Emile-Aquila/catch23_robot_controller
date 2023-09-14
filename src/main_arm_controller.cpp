@@ -139,6 +139,12 @@ namespace arm_controller{
                     this->_change_hand_unit_state(HandUnitState::HAND_BEFORE);
                 }
 
+                if(this->joy_state.get_button_1_indexed(2, true)){
+                    // TODO: テストコード
+                    this->_set_hand_motion(HandMotionType::MOTION_RELEASE_SHOOTER);
+                    this->_change_hand_unit_state(HandUnitState::HAND_BEFORE);
+                }
+
                 if(this->joy_state.get_button_1_indexed(9, true)) {  // 原点に戻る
                     RCLCPP_WARN(this->get_logger(), "[AUTO] return to origin!");
                     if(this->_requested_state.tip_state() != this->_tip_state_origin) {
@@ -246,9 +252,9 @@ namespace arm_controller{
                 }
             }
 
-            request->step_min = 10.0f;
-            request->step_max = 100.0f;
-            request->d_step_max = 15.0f;
+            request->step_min = 5.0f;
+            request->step_max = 130.0f;
+            request->d_step_max = 10.0f;
             request->is_common = this->_traj_enter_common_area_is_enable;
 
             auto future_res = _traj_client->async_send_request(
@@ -326,7 +332,7 @@ namespace arm_controller{
         _pub_micro_ros_theta->publish(tgt_data);
 
         _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_MCMD3, 1, 0, req_arm_state.z));
-        _pub_b3m->publish(gen_b3m_set_pos_msg(wrist_servo_id, -rad_to_deg(req_arm_state.phi), 0));
+        _pub_b3m->publish(gen_b3m_set_pos_msg(wrist_servo_id, rad_to_deg(req_arm_state.phi), 0));
     }
 
     void ArmControllerNode::_request_hand_open_close(bool hand_close) {
@@ -364,6 +370,9 @@ namespace arm_controller{
     }
 
     bool ArmControllerNode::_change_hand_unit_state(HandUnitState next_state) {
+        if(_planner_state != PlannerState::PLANNER_WAITING){
+            if(next_state != HandUnitState::HAND_WAIT && next_state != HandUnitState::HAND_CARRY)return false;
+        }
         this->_hand_unit_state = next_state;
         switch(next_state) {
             case HandUnitState::HAND_WAIT:
@@ -382,9 +391,11 @@ namespace arm_controller{
                 RCLCPP_WARN(this->get_logger(), "HAND_CARRY");
                 break;
         }
+        return true;
     }
 
     void ArmControllerNode::_set_hand_motion(HandMotionType hand_motion) {
+//        if(_planner_state != PlannerState::PLANNER_WAITING)return;
         _hand_unit_motion_type = hand_motion;
         switch( hand_motion ) {
             case HandMotionType::MOTION_NULL:
@@ -445,7 +456,7 @@ namespace arm_controller{
                         this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_COMMON){
                     _request_hand_open_close(true);  // close
                 }
-                if(this->_time_counter_hand_motion.check_time(3000)){  // TODO: 3s待つ
+                if(this->_time_counter_hand_motion.check_time(1000)){  // TODO: 3s待つ
                     this->_time_counter_hand_motion.disable();
                     this->_change_hand_unit_state(HandUnitState::HAND_AFTER);
                 }

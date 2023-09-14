@@ -138,9 +138,9 @@ bool TimeCounter::is_enable() {
 
 
 PositionSelector get_position_selector_shooter(bool is_red){
-    double x_prepare = 548.0, x_release = 650.0;
+    double x_prepare = 508.0, x_release = 650.0;
     std::vector<double> ys = {-47.5, -267.5, -487.5};  // もう1箇所の投下位置はy-30した位置にある。
-    std::vector<double> thetas = {90.0, 90.0, 90.0};
+    std::vector<double> thetas = {0.0, 0.0, 0.0};
 
     std::vector<TipStates> vectors;
     for(int i=0; i<ys.size(); i++){
@@ -148,8 +148,12 @@ PositionSelector get_position_selector_shooter(bool is_red){
         TipStates vec = {
                 TipState(x_prepare, y, 0.0, deg_to_rad(theta)),
                 TipState(x_release, y, 0.0, deg_to_rad(theta)),
+        }, vec2 = {
+                TipState(x_prepare, y - 30.0, 0.0, deg_to_rad(theta)),
+                TipState(x_release, y - 30.0, 0.0, deg_to_rad(theta)),
         };
         vectors.emplace_back(vec);
+        vectors.emplace_back(vec2);
     }
 
     if(is_red){
@@ -167,12 +171,19 @@ PositionSelector get_position_selector_shooter(bool is_red){
 PositionSelector get_position_selector_targets(bool is_red){
     double y = 392.5;
 
-    TipState p4(500.0, y, 0.0, deg_to_rad(45.0));
-    TipState p5(300.0, y, 0.0, deg_to_rad(45.0));
-    TipState p6(100.0, y, 0.0, deg_to_rad(225.0));
-    TipState p7(-100.0, y, 0.0, deg_to_rad(225.0));
-    TipState p8(-300.0, y, 0.0, deg_to_rad(225.0));
-    TipState p9(-500.0, y, 0.0, deg_to_rad(45.0));
+    TipState p4(500.0, y, 0.0, deg_to_rad(-45.0));
+    TipState p5(300.0, y, 0.0, deg_to_rad(-45.0));
+    TipState p6(100.0, y, 0.0, deg_to_rad(-45.0));
+    TipState p7(-100.0, y, 0.0, deg_to_rad(-45.0));
+    TipState p8(-300.0, y, 0.0, deg_to_rad(-45.0));
+    TipState p9(-500.0, y, 0.0, deg_to_rad(-45.0));
+
+//    TipState p4(500.0, y, 0.0, deg_to_rad(45.0));
+//    TipState p5(300.0, y, 0.0, deg_to_rad(45.0));
+//    TipState p6(100.0, y, 0.0, deg_to_rad(225.0));
+//    TipState p7(-100.0, y, 0.0, deg_to_rad(225.0));
+//    TipState p8(-300.0, y, 0.0, deg_to_rad(225.0));
+//    TipState p9(-500.0, y, 0.0, deg_to_rad(225.0));
 
     std::vector<TipStates> vectors = {
             {p4},
@@ -195,9 +206,9 @@ PositionSelector get_position_selector_targets(bool is_red){
 
 PositionSelector get_position_selector_common(bool is_red) {
     double y = 842.5;
-    TipState common1(420.0, y, 0.0, 0.0);
-    TipState common2(0, y, 0.0, 0.0);
-    TipState common3(-420.0, y, 0.0, 0.0);
+    TipState common1(420.0, y, 0.0, deg_to_rad(90.0));
+    TipState common2(0, y, 0.0, deg_to_rad(90.0));
+    TipState common3(-420.0, y, 0.0, deg_to_rad(90.0));
 
     std::vector<TipStates> vectors = {
             {common1},
