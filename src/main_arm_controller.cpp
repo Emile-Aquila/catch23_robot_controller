@@ -79,7 +79,7 @@ namespace arm_controller{
                 if (next_arm_state == clip_arm_state(next_arm_state) && (abs(next_arm_state.theta- this->_requested_state.arm_state().theta) <= M_PI)) {
                     if (d_x != 0.0 || d_y != 0.0 || d_z != 0.0 || d_theta != 0.0) {
                         this->_requested_state.set_state(next_arm_state);
-
+                        this->_change_planner_state(PlannerState::PLANNER_WAITING);
                         RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf",
                                     this->_requested_state.tip_state().x, this->_requested_state.tip_state().y, this->_requested_state.tip_state().z, this->_requested_state.tip_state().theta);
                         RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf",
@@ -241,17 +241,12 @@ namespace arm_controller{
     }
 
     bool ArmControllerNode::_change_controller_state(ControllerState next_state){
-        if(_controller_state != next_state){
-            _change_planner_state(PlannerState::PLANNER_WAITING);
-            _trajectory_data.clear();
-            _traj_target_points.clear();
-        }
         _controller_state = next_state;
         return true;
     }
 
     bool ArmControllerNode::_change_planner_state(PlannerState next_state) {
-        if(_planner_state == PlannerState::PLANNER_FOLLOWING && next_state == PlannerState::PLANNER_WAITING){
+        if(next_state == PlannerState::PLANNER_WAITING){
             _trajectory_data.clear();
         }
         _planner_state = next_state;
