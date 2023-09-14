@@ -89,7 +89,7 @@ private:
     int id_now = -1;
 public:
     PositionSelector();
-    PositionSelector(std::vector<TipStates>& tip_states_list);
+    PositionSelector(std::vector<TipStates> tip_states_list);
     int size();
     TipStates next();
     TipStates prev();
@@ -97,9 +97,6 @@ public:
     void clear();
     bool complete();
 };
-
-PositionSelector get_position_selector_shooter(bool is_red);
-PositionSelector get_position_selector_targets(bool is_red);
 
 
 
@@ -113,7 +110,10 @@ public:
     bool is_enable();
     void disable();
     void enable();
-
 };
+
+PositionSelector get_position_selector_shooter(bool is_red);
+PositionSelector get_position_selector_targets(bool is_red);
+PositionSelector get_position_selector_common(bool is_red);
 
 #endif //ROS2_WS_SYSTEM_CLASSES_HPP

@@ -325,7 +325,7 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
     planner->checkValidity();
 
 //    ob::PlannerStatus solved = planner->ob::Planner::solve(0.5);
-    ob::PlannerStatus solved = planner->ob::Planner::solve(0.2);
+    ob::PlannerStatus solved = planner->ob::Planner::solve(0.3);
     if (!solved) {
         std::cout << "No solution found" << std::endl;
         return std::make_pair(std::vector<ArmState>{}, false);
@@ -335,7 +335,7 @@ std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &s
     if(path->getStates().size() <= 2){  // スプライン補間は3点以上必要
         path->interpolate(3);
     }
-    path->interpolate(4);
+//    path->interpolate(4);
 //    path->checkAndRepair(10);
 
     std::vector<ArmState> traj;

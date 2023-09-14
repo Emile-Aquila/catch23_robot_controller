@@ -45,9 +45,9 @@ namespace arm_controller{
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
         _requested_state = MainArmState(_tip_state_origin, false);  // 初期位置
 
-        _field_tip_pos = PositionSelector(get_position_selector_targets(true));  // TODO: 実装
-        _common_tip_pos = PositionSelector(get_position_selector_targets(true));
-        _shooter_tip_pos = PositionSelector(get_position_selector_shooter(true));
+        _field_tip_pos = PositionSelector(get_position_selector_targets(false));  // TODO: 実装
+        _common_tip_pos = PositionSelector(get_position_selector_common(false));
+        _shooter_tip_pos = PositionSelector(get_position_selector_shooter(false));
 
 
         // xy座標で動かす
@@ -96,18 +96,17 @@ namespace arm_controller{
                 // CTRL_AUTOの動作
                 if(this->joy_state.get_button_1_indexed(5 , true)) {
                     // ワークの位置へ
-                    TipStates target_points = {
-                            this->_requested_state.tip_state(),
-                            TipState(-505.0, 415.0, 0.0, M_PI/4.0f + M_PI_2)
-                    };
+                    TipStates target_points;
                     bool is_completed = false;
                     if((this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE) && (!this->_common_tip_pos.complete())){
                         target_points = this->_common_tip_pos.next();
+                        target_points.insert(target_points.begin(), this->_requested_state.tip_state());
                     }else{
                         if(this->_field_tip_pos.complete()){
                             is_completed = true;
                         }else {
                             target_points = this->_field_tip_pos.next();
+                            target_points.insert(target_points.begin(), this->_requested_state.tip_state());
                         }
                     }
                     if(!is_completed) {
@@ -119,22 +118,25 @@ namespace arm_controller{
 
                 }else if(this->joy_state.get_button_1_indexed(6, true)){
                     // シューティングボックスへ
-                    TipStates target_points = {
-                            this->_requested_state.tip_state(),
-                            TipState(410.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
-                            TipState(410.0 + 100.0 + 100.0, 5.0 - 200.0, 0.0, M_PI_2),
-                    };
+                    TipStates target_points;
                     bool is_completed = false;
                     if(this->_shooter_tip_pos.complete()){
                         is_completed = true;
                     }else {
                         target_points = this->_shooter_tip_pos.next();
+                        target_points.insert(target_points.begin(), this->_requested_state.tip_state());
                     }
                     if(!is_completed){
                         this->_request_trajectory_following(target_points, false);  // こっちはfalseの方が良いかも?
                     }else{ // _shooter_tip_posが空
                         RCLCPP_WARN(this->get_logger(), "****[WARN]**** shooter_tip_pos is completed.");
                     }
+                }
+
+                if(this->joy_state.get_button_1_indexed(1, true)){
+                    // TODO: テストコード
+                    this->_set_hand_motion(HandMotionType::MOTION_GRAB_OUR_AREA);
+                    this->_change_hand_unit_state(HandUnitState::HAND_BEFORE);
                 }
 
                 if(this->joy_state.get_button_1_indexed(9, true)) {  // 原点に戻る
@@ -348,9 +350,14 @@ namespace arm_controller{
     bool ArmControllerNode::_change_common_area_state(CommonAreaState next_state) {
         if(this->_common_area_state == next_state)return false;
         if(next_state == CommonAreaState::COMMON_AREA_ENABLE){
-            // TODO: アクチュエーターの動作実装
+            RCLCPP_WARN(get_logger(), "[INFO] COMMON AREA Enable");
+            const float target_angle = 85.0f;
+            _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 3, 0, target_angle));
+            // TODO: 妨害の動作実装
         }else{
-            // TODO: アクチュエーターの動作実装
+            RCLCPP_WARN(get_logger(), "[INFO] COMMON AREA Disable");
+            const float target_angle = 85.0f;
+            _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 3, 0, target_angle));
         }
         this->_common_area_state = next_state;
         return true;
@@ -358,10 +365,44 @@ namespace arm_controller{
 
     bool ArmControllerNode::_change_hand_unit_state(HandUnitState next_state) {
         this->_hand_unit_state = next_state;
+        switch(next_state) {
+            case HandUnitState::HAND_WAIT:
+                RCLCPP_WARN(this->get_logger(), "HAND_WAIT");
+                break;
+            case HandUnitState::HAND_BEFORE:
+                RCLCPP_WARN(this->get_logger(), "HAND_BEFORE");
+                break;
+            case HandUnitState::HAND_MOTION:
+                RCLCPP_WARN(this->get_logger(), "HAND_MOTION");
+                break;
+            case HandUnitState::HAND_AFTER:
+                RCLCPP_WARN(this->get_logger(), "HAND_AFTER");
+                break;
+            case HandUnitState::HAND_CARRY:
+                RCLCPP_WARN(this->get_logger(), "HAND_CARRY");
+                break;
+        }
     }
 
     void ArmControllerNode::_set_hand_motion(HandMotionType hand_motion) {
         _hand_unit_motion_type = hand_motion;
+        switch( hand_motion ) {
+            case HandMotionType::MOTION_NULL:
+                RCLCPP_WARN(this->get_logger(), "MOTION NULL");
+                break;
+            case HandMotionType::MOTION_GRAB_COMMON:
+                RCLCPP_WARN(this->get_logger(), "GRUB COMMON");
+                break;
+            case HandMotionType::MOTION_GRAB_OUR_AREA:
+                RCLCPP_WARN(this->get_logger(), "GRUB OUR");
+                break;
+            case HandMotionType::MOTION_RELEASE_NORMAL:
+                RCLCPP_WARN(this->get_logger(), "RELEASE NORMAL");
+                break;
+            case HandMotionType::MOTION_RELEASE_SHOOTER:
+                RCLCPP_WARN(this->get_logger(), "RELEASE SHOOTER");
+                break;
+        }
     }
 
     void ArmControllerNode::_hand_unit_timer_callback() {
