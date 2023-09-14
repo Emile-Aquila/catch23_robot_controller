@@ -99,13 +99,17 @@ namespace arm_controller{
                             this->_requested_state.tip_state(),
                             TipState(-505.0, 415.0, 0.0, M_PI/4.0f + M_PI_2)
                     };
-                    // TODO: 共通エリア侵入時の処理
-                    if(this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE){
-
+                    bool is_completed = false;
+                    if((this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE) && (!this->_common_tip_pos.complete())){
+                        target_points = this->_common_tip_pos.next();
                     }else{
-                        target_points = this->_field_tip_pos.next();
+                        if(this->_field_tip_pos.complete()){
+                            is_completed = true;
+                        }else {
+                            target_points = this->_field_tip_pos.next();
+                        }
                     }
-                    this->_request_trajectory_following(target_points, false);
+                    if(!is_completed)this->_request_trajectory_following(target_points, false);
 
                 }else if(this->joy_state.get_button_1_indexed(6, true)){  // シューティングボックスへ
                     TipStates target_points = {
@@ -194,7 +198,7 @@ namespace arm_controller{
         _b3m_init(wrist_servo_id);  // init b3m
         _b3m_init(ikko_servo_id);  // init b3m
 
-        _timer_planner = this->create_wall_timer(40ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
+        _timer_planner = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
         RCLCPP_WARN(this->get_logger(), "[START] main_arm_controller");
     }
 
@@ -218,8 +222,8 @@ namespace arm_controller{
             }
 
             request->step_min = 10.0f;
-            request->step_max = 90.0f;
-            request->d_step_max = 20.0f;
+            request->step_max = 100.0f;
+            request->d_step_max = 15.0f;
             request->is_common = this->_traj_enter_common_area_is_enable;
 
             auto future_res = _traj_client->async_send_request(
