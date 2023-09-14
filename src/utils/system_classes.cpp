@@ -116,18 +116,31 @@ PositionSelector get_position_selector_targets(bool is_red){
 
 
 // TimeCounter
-void TimeCounter::count() {
+void TimeCounter::count(uint64_t time_interval) {
+    if(!_is_enable){
+        _counter = 0;
+        return;
+    }
     if(_counter == UINT64_MAX){
         std::cerr << "[ERROR] TimeCounter is max." << std::endl;
     }else{
-        _counter += 1;
+        _counter += time_interval;
     }
 }
 
 bool TimeCounter::check_time(uint64_t ms) {
-    return ms <= _counter;
+    return (ms <= _counter) && _is_enable;
 }
 
-void TimeCounter::reset() {
+void TimeCounter::disable() {
+    _is_enable = false;
     _counter = 0;
+}
+
+void TimeCounter::enable() {
+    _is_enable = true;
+}
+
+bool TimeCounter::is_enable() {
+    return _is_enable;
 }

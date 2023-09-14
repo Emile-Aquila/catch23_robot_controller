@@ -36,9 +36,6 @@ namespace arm_controller {
         theta_sub = this->create_subscription<actuator_msgs::msg::C620Feedback>("c620_theta", 5, theta_callback);
         r_sub = this->create_subscription<actuator_msgs::msg::C620Feedback>("c620_r", 5, r_callback);
 
-//        rmw_qos_profile_t qos_profile = rmw_qos_profile_sensor_data;
-//        auto qos = rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, 10), qos_profile);
-
         r_ref = this->create_subscription<std_msgs::msg::Float32>("mros_input_r", 5, ref_r_callback);
         theta_ref = this->create_subscription<std_msgs::msg::Float32>("mros_input_theta", 5, ref_theta_callback);
 
@@ -55,7 +52,7 @@ namespace arm_controller {
             this->pub_tip_tgt->publish(tip_data_tgt);
             this->pub_tip_ref->publish(tip_data_ref);
         };
-        timer = this->create_wall_timer(30ms, timer_callback);
+        timer = this->create_wall_timer(40ms, timer_callback);
     }
 
     StatePublisherNode::~StatePublisherNode(){}

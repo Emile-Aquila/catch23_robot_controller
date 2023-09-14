@@ -59,6 +59,7 @@ namespace arm_controller{
 
         // ROS
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
+        rclcpp::Subscription<catch23_robot_controller::msg::TipState>::SharedPtr sub_tip_fb;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr _pub_micro_ros_r, _pub_micro_ros_theta;
         rclcpp::Publisher<kondo_msg>::SharedPtr _pub_b3m;
@@ -75,11 +76,12 @@ namespace arm_controller{
         JoyStickState joy_state;
 
         // data
-        MainArmState _requested_state;
+        MainArmState _requested_state, _feedback_state;
         TrajectoryData _trajectory_data;
         std::vector<TipState> _traj_target_points;
         bool _traj_enter_common_area_is_enable;
         PositionSelector _field_tip_pos, _common_tip_pos, _shooter_tip_pos;
+        TimeCounter _time_counter_hand_motion;  // hand motion用
 
         const TipState _tip_state_origin = TipState(325.0f, 0.0f, 0.0f, 0.0f);  // 初期位置
     };

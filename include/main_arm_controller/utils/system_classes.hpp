@@ -106,10 +106,14 @@ PositionSelector get_position_selector_targets(bool is_red);
 class TimeCounter{  // 擬似的に秒数を数える
 private:
     uint64_t _counter = 0;
+    bool _is_enable = false;
 public:
-    void count();
+    void count(uint64_t time_interval);
     bool check_time(uint64_t ms);
-    void reset();
+    bool is_enable();
+    void disable();
+    void enable();
+
 };
 
 #endif //ROS2_WS_SYSTEM_CLASSES_HPP

@@ -187,7 +187,12 @@ namespace arm_controller{
         };
 
 
+        auto tip_fb_callback = [this](const catch23_robot_controller::msg::TipState &msg) -> void {
+            this->_feedback_state.set_state(convert_tip_state(msg));
+        };
+
         joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 10, joy_callback_xy);
+        sub_tip_fb = this->create_subscription<catch23_robot_controller::msg::TipState>("tip_state", 10, tip_fb_callback);
         _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 5);
         _pub_micro_ros_r = this->create_publisher<std_msgs::msg::Float32>("mros_input_r", 5);
         _pub_micro_ros_theta = this->create_publisher<std_msgs::msg::Float32>("mros_input_theta", 5);
@@ -216,7 +221,7 @@ namespace arm_controller{
         _b3m_init(ikko_servo_id);  // init b3m
 
         _timer_planner = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
-        _timer_hand_unit = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
+        _timer_hand_unit = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_hand_unit_timer_callback, this));
         RCLCPP_WARN(this->get_logger(), "[START] main_arm_controller");
     }
 
@@ -355,12 +360,17 @@ namespace arm_controller{
         this->_hand_unit_state = next_state;
     }
 
+    void ArmControllerNode::_set_hand_motion(HandMotionType hand_motion) {
+        _hand_unit_motion_type = hand_motion;
+    }
+
     void ArmControllerNode::_hand_unit_timer_callback() {
         TipState tip_state_now = this->_requested_state.tip_state();
         switch (this->_hand_unit_state) {
             case HandUnitState::HAND_WAIT:
                 // no action
                 break;
+
             case HandUnitState::HAND_BEFORE:  // ハンドを下ろす
                 if(this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_OUR_AREA){
                     _request_hand_open_close(false);  // open
@@ -368,6 +378,7 @@ namespace arm_controller{
                 }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_COMMON){
                     _request_hand_open_close(false);  // open
                     tip_state_now.z = 187.7f;
+
                 }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_NORMAL){
                     _request_hand_open_close(true);  // close
                     tip_state_now.z = 187.7f;  // TODO: 未定
@@ -375,31 +386,41 @@ namespace arm_controller{
                     _request_hand_open_close(true);  // close
                     tip_state_now.z = 57.0f;
                 }
+
                 this->_send_request_arm_state(arm_ik(tip_state_now));
-                // TODO: feedbackで遷移処理
+                if((tip_state_now.z - this->_feedback_state.tip_state().z) < 5.0){  // 誤差が5mm以下
+                    this->_change_hand_unit_state(HandUnitState::HAND_MOTION);
+                }  // feedbackによる遷移処理
                 break;
+
             case HandUnitState::HAND_MOTION:  // ハンドの開閉を行う
+                if(!this->_time_counter_hand_motion.is_enable())this->_time_counter_hand_motion.enable();
+                this->_time_counter_hand_motion.count(100);
+
                 if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_SHOOTER ||
                         this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_NORMAL){
                     _request_hand_open_close(false);  // open
                 }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_OUR_AREA ||
                         this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_COMMON){
                     _request_hand_open_close(true);  // close
-                }  // TODO: n秒待つ
+                }
+                if(this->_time_counter_hand_motion.check_time(3000)){  // TODO: 3s待つ
+                    this->_time_counter_hand_motion.disable();
+                    this->_change_hand_unit_state(HandUnitState::HAND_AFTER);
+                }
                 break;
+
             case HandUnitState::HAND_AFTER:  // ハンドを上げる
                 tip_state_now.z = 0.0f;
                 this->_send_request_arm_state(arm_ik(tip_state_now));
-                // TODO: feedbackで遷移処理
+                if((this->_feedback_state.tip_state().z - tip_state_now.z) < 5.0){  // 誤差が5mm以下
+                    this->_change_hand_unit_state(HandUnitState::HAND_CARRY);
+                }  // feedbackによる遷移処理
                 break;
-            case HandUnitState::HAND_CARRY:  // ハンドがworkを保持してz=0にした状態
-                // no action   <- TODO: ?
+            case HandUnitState::HAND_CARRY:
+                // no action
                 break;
         }
-    }
-
-    void ArmControllerNode::_set_hand_motion(HandMotionType hand_motion) {
-        _hand_unit_motion_type = hand_motion;
     }
 }
 
