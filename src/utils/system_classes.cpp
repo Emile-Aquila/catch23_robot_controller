@@ -113,3 +113,21 @@ PositionSelector get_position_selector_targets(bool is_red){
     // TODO: 実装
     return PositionSelector();
 }
+
+
+// TimeCounter
+void TimeCounter::count() {
+    if(_counter == UINT64_MAX){
+        std::cerr << "[ERROR] TimeCounter is max." << std::endl;
+    }else{
+        _counter += 1;
+    }
+}
+
+bool TimeCounter::check_time(uint64_t ms) {
+    return ms <= _counter;
+}
+
+void TimeCounter::reset() {
+    _counter = 0;
+}

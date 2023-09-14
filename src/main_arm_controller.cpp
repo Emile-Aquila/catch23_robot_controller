@@ -80,17 +80,17 @@ namespace arm_controller{
                 ArmState next_arm_state = arm_ik(next_tip_state);
                 if (next_arm_state == clip_arm_state(next_arm_state) && (abs(next_arm_state.theta- this->_requested_state.arm_state().theta) <= M_PI)) {
                     if (d_x != 0.0 || d_y != 0.0 || d_z != 0.0 || d_theta != 0.0) {
-                        this->_requested_state.set_state(next_arm_state);
                         this->_change_planner_state(PlannerState::PLANNER_WAITING);
                         RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf",
                                     this->_requested_state.tip_state().x, this->_requested_state.tip_state().y, this->_requested_state.tip_state().z, this->_requested_state.tip_state().theta);
                         RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf",
                                     this->_requested_state.arm_state().r, this->_requested_state.arm_state().theta, this->_requested_state.arm_state().z, this->_requested_state.arm_state().phi);
+                        this->_send_request_arm_state(next_arm_state);
                     }
                 } else {
                     RCLCPP_WARN(this->get_logger(), "Invalid input!");
                 }
-                this->_send_request_arm_state(this->_requested_state.arm_state());  // 人力でロボットを動かす場合の処理
+//                this->_send_request_arm_state(this->_requested_state.arm_state());  // 人力でロボットを動かす場合の処理
 
             }else if(this->_controller_state == ControllerState::CTRL_AUTO) {
                 // CTRL_AUTOの動作
@@ -216,6 +216,7 @@ namespace arm_controller{
         _b3m_init(ikko_servo_id);  // init b3m
 
         _timer_planner = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
+        _timer_hand_unit = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
         RCLCPP_WARN(this->get_logger(), "[START] main_arm_controller");
     }
 
@@ -250,12 +251,11 @@ namespace arm_controller{
 
         }else if(this->_planner_state == PlannerState::PLANNER_FOLLOWING){  // 経路追従
             if(!(this->_trajectory_data.complete())) {  // 経路追従中
-                this->_requested_state.set_state(this->_trajectory_data.get_front());
+                this->_send_request_arm_state(this->_trajectory_data.get_front());
             }else{  // 経路追従が終わった状態
                 RCLCPP_INFO(this->get_logger(), "[INFO] Path following completed!");
                 this->_change_planner_state(PlannerState::PLANNER_WAITING);
             }
-            this->_send_request_arm_state(this->_requested_state.arm_state());
         }
     }
 
@@ -276,8 +276,8 @@ namespace arm_controller{
             this->_change_planner_state(PlannerState::PLANNER_FOLLOWING);
         }else{
             RCLCPP_ERROR(this->get_logger(), "[ERROR] generated trajectory is invalid!");
-            this->_requested_state.set_state(this->_traj_target_points.back());  // 経路が生成できなった場合には位置制御を行う.
-            _send_request_arm_state(this->_requested_state.arm_state());
+            // 経路が生成できなった場合には位置制御を行う.
+            this->_send_request_arm_state(arm_ik(this->_traj_target_points.back()));
             this->_change_planner_state(PlannerState::PLANNER_WAITING);
         }
     }
@@ -310,6 +310,8 @@ namespace arm_controller{
 
     void ArmControllerNode::_send_request_arm_state(const ArmState &req_arm_state) {
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
+
+        _requested_state.set_state(req_arm_state);
         std_msgs::msg::Float32 tgt_data;
         tgt_data.data = req_arm_state.r;
         _pub_micro_ros_r->publish(tgt_data);
@@ -347,6 +349,57 @@ namespace arm_controller{
         }
         this->_common_area_state = next_state;
         return true;
+    }
+
+    bool ArmControllerNode::_change_hand_unit_state(HandUnitState next_state) {
+        this->_hand_unit_state = next_state;
+    }
+
+    void ArmControllerNode::_hand_unit_timer_callback() {
+        TipState tip_state_now = this->_requested_state.tip_state();
+        switch (this->_hand_unit_state) {
+            case HandUnitState::HAND_WAIT:
+                // no action
+                break;
+            case HandUnitState::HAND_BEFORE:  // ハンドを下ろす
+                if(this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_OUR_AREA){
+                    _request_hand_open_close(false);  // open
+                    tip_state_now.z = 217.7f;
+                }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_COMMON){
+                    _request_hand_open_close(false);  // open
+                    tip_state_now.z = 187.7f;
+                }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_NORMAL){
+                    _request_hand_open_close(true);  // close
+                    tip_state_now.z = 187.7f;  // TODO: 未定
+                }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_SHOOTER){
+                    _request_hand_open_close(true);  // close
+                    tip_state_now.z = 57.0f;
+                }
+                this->_send_request_arm_state(arm_ik(tip_state_now));
+                // TODO: feedbackで遷移処理
+                break;
+            case HandUnitState::HAND_MOTION:  // ハンドの開閉を行う
+                if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_SHOOTER ||
+                        this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_NORMAL){
+                    _request_hand_open_close(false);  // open
+                }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_OUR_AREA ||
+                        this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_COMMON){
+                    _request_hand_open_close(true);  // close
+                }  // TODO: n秒待つ
+                break;
+            case HandUnitState::HAND_AFTER:  // ハンドを上げる
+                tip_state_now.z = 0.0f;
+                this->_send_request_arm_state(arm_ik(tip_state_now));
+                // TODO: feedbackで遷移処理
+                break;
+            case HandUnitState::HAND_CARRY:  // ハンドがworkを保持してz=0にした状態
+                // no action   <- TODO: ?
+                break;
+        }
+    }
+
+    void ArmControllerNode::_set_hand_motion(HandMotionType hand_motion) {
+        _hand_unit_motion_type = hand_motion;
     }
 }
 

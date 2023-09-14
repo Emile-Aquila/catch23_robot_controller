@@ -48,11 +48,14 @@ namespace arm_controller{
         void _b3m_init(uint8_t servo_id);
         void _send_request_arm_state(const ArmState& req_arm_state);
         void _request_hand_open_close(bool hand_close);
+        void _hand_unit_timer_callback();
 
         // change state
         bool _change_controller_state(ControllerState next_state);
         bool _change_planner_state(PlannerState next_state);
         bool _change_common_area_state(CommonAreaState next_state);
+        bool _change_hand_unit_state(HandUnitState next_state);
+        void _set_hand_motion(HandMotionType hand_motion);
 
         // ROS
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
@@ -61,12 +64,14 @@ namespace arm_controller{
         rclcpp::Publisher<kondo_msg>::SharedPtr _pub_b3m;
         rclcpp::Client<kondo_srv>::SharedPtr _b3m_client;
         rclcpp::Client<traj_srv>::SharedPtr _traj_client;
-        rclcpp::TimerBase::SharedPtr _timer_planner;
+        rclcpp::TimerBase::SharedPtr _timer_planner, _timer_hand_unit;
 
         // states
         ControllerState _controller_state = ControllerState::CTRL_HUMAN;
         PlannerState _planner_state = PlannerState::PLANNER_WAITING;
         CommonAreaState _common_area_state = CommonAreaState::COMMON_AREA_DISABLE;  // 共通エリアの状態と妨害の状態を共通化してる
+        HandUnitState _hand_unit_state = HandUnitState::HAND_WAIT;
+        HandMotionType _hand_unit_motion_type = HandMotionType::MOTION_NULL;
         JoyStickState joy_state;
 
         // data

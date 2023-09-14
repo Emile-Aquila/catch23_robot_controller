@@ -35,6 +35,22 @@ enum class CommonAreaState{
     COMMON_AREA_DISABLE,
 };
 
+enum class HandUnitState {  // handの手先の状態 (上下)
+    HAND_WAIT,  // workを持っていない状態でz=0
+    HAND_BEFORE, // handをおろし始めた状態
+    HAND_MOTION,   // 把持動作 or 開放動作
+    HAND_AFTER,  // handを持ち上げる動作
+    HAND_CARRY,  // workを持っている状態でz=0
+};
+
+enum class HandMotionType{
+    MOTION_NULL,
+    MOTION_GRAB_OUR_AREA,
+    MOTION_GRAB_COMMON,
+    MOTION_RELEASE_SHOOTER,
+    MOTION_RELEASE_NORMAL,
+};
+
 class MainArmState {
 private:
     ArmState _arm_state;
@@ -84,5 +100,16 @@ public:
 
 PositionSelector get_position_selector_shooter(bool is_red);
 PositionSelector get_position_selector_targets(bool is_red);
+
+
+
+class TimeCounter{  // 擬似的に秒数を数える
+private:
+    uint64_t _counter = 0;
+public:
+    void count();
+    bool check_time(uint64_t ms);
+    void reset();
+};
 
 #endif //ROS2_WS_SYSTEM_CLASSES_HPP
