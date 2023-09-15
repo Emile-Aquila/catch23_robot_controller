@@ -8,27 +8,21 @@
 #include <main_arm_controller/one_grab_hand_node.hpp>
 #include <actuator_msgs/msg/node_type.hpp>
 
-
 using namespace std::chrono_literals;
+using namespace std::placeholders;
+
 
 namespace arm_controller {
     OneGrabHandNode::OneGrabHandNode(const rclcpp::NodeOptions &options)
-        :Node("one_grab_hand_component", options){
+            :Node("one_grab_hand_component", options){
+        _grab_state = OneGrabState::ONE_GRAB_WAIT;
 
-//        auto ref_r_callback = [this](const std_msgs::msg::Float32 &msg) -> void {
-//            this->arm_state_ref.r = msg.data;
-//        };
-//        theta_sub = this->create_subscription<actuator_msgs::msg::C620Feedback>("c620_theta", 5, theta_callback);
-
-
-
+        auto bind_callback = std::bind(&OneGrabHandNode::sub_callback, this, _1);
+        _sub_request = this->create_subscription<OneHandRequest>("one_hand_request", 10, bind_callback);
         _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
-        auto timer_callback = [this](){};
-        timer = this->create_wall_timer(40ms, timer_callback);
+        _timer = this->create_wall_timer(100ms, std::bind(&OneGrabHandNode::timer_callback, this));
 
-//        _pub_b3m->publish(gen_b3m_set_pos_msg(hand_interval_id, target_pos, 0));
-        rclcpp::sleep_for(100ms);
-        _b3m_init(ikko_servo_id);  // init b3m
+        _b3m_init(_ikko_servo_id);  // init b3m
     }
 
     OneGrabHandNode::~OneGrabHandNode(){}
@@ -45,8 +39,78 @@ namespace arm_controller {
         _pub_b3m->publish(gen_b3m_write_msg(servo_id, 0x00, 0x28)); // 動作モードをNormalに
         rclcpp::sleep_for(50ms);
     }
-};
 
+    void OneGrabHandNode::timer_callback() {
+        const float angle_forward = 66.5; // (deg)
+        const float angle_back = -66.5; // (deg)
+        const uint64_t servo_move_time_half = 1500;
+        const uint64_t air_move_time = 800;
 
+        if(this->_grab_state == OneGrabState::ONE_GRAB_WAIT || this->_grab_state == OneGrabState::ONE_GRAB_ESCAPE){
+            this->_time_counter.disable();
+            if(this->_grab_state == OneGrabState::ONE_GRAB_WAIT)this->_is_moving = false;
+        }else{
+            if(!(this->_time_counter.is_enable()))this->_time_counter.enable();  // counter起動
+            this->_time_counter.count(100);  // count
+            this->_is_moving = true;
+        }
+
+        switch (this->_grab_state) {  // 動作
+            case OneGrabState::ONE_GRAB_WAIT:
+                // no action
+                break;
+            case OneGrabState::ONE_GRAB_TOWARD:
+                _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_forward, 0));
+                if(this->_time_counter.check_time(servo_move_time_half))change_grab_state(OneGrabState::ONE_GRAB_CATCH);
+                break;
+            case OneGrabState::ONE_GRAB_CATCH:
+                _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_forward, 0));
+                request_air(true);
+                if(this->_time_counter.check_time(air_move_time))change_grab_state(OneGrabState::ONE_GRAB_BACK);
+                break;
+            case OneGrabState::ONE_GRAB_BACK:
+                _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_back, 0));
+                if(this->_time_counter.check_time(servo_move_time_half*2))change_grab_state(OneGrabState::ONE_GRAB_RELEASE);
+                break;
+            case OneGrabState::ONE_GRAB_RELEASE:
+                _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_back, 0));
+                if(this->_time_counter.check_time(air_move_time))change_grab_state(OneGrabState::ONE_GRAB_ESCAPE);
+                request_air(false);
+                break;
+            case OneGrabState::ONE_GRAB_ESCAPE:
+                _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_forward, 0));
+                if(this->_time_counter.check_time(servo_move_time_half*2))change_grab_state(OneGrabState::ONE_GRAB_STOP);
+                break;
+            case OneGrabState::ONE_GRAB_STOP:
+                // no action
+                break;
+        }
+    }
+
+    void OneGrabHandNode::change_grab_state(OneGrabState next_state) {
+        if(_grab_state != next_state){
+            this->_time_counter.disable();
+        }
+        _grab_state = next_state;
+    }
+
+    void OneGrabHandNode::request_air(bool is_close){
+        uint8_t node_id = 1;
+        uint8_t device_id = 0;
+        _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, node_id, device_id, 0.0f, is_close));
+    }
+
+    void OneGrabHandNode::sub_callback(const catch23_robot_controller::msg::OneHandRequest &msg) {
+        if(msg.request_type == OneHandRequest::REQUEST_WAIT){
+            change_grab_state(OneGrabState::ONE_GRAB_WAIT);
+
+        }else if(msg.request_type ==OneHandRequest::REQUEST_START){
+            if(!_is_moving)change_grab_state(OneGrabState::ONE_GRAB_TOWARD);
+
+        }else if(msg.request_type == OneHandRequest::REQUEST_FORCE_START){
+            change_grab_state(OneGrabState::ONE_GRAB_TOWARD);
+        }
+    }
+}
 
 RCLCPP_COMPONENTS_REGISTER_NODE(arm_controller::OneGrabHandNode)

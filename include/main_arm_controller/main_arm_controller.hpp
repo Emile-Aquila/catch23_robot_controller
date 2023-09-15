@@ -64,7 +64,7 @@ namespace arm_controller{
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr _pub_micro_ros_r, _pub_micro_ros_theta;
         rclcpp::Publisher<kondo_msg>::SharedPtr _pub_b3m;
-        rclcpp::Client<kondo_srv>::SharedPtr _b3m_client;
+//        rclcpp::Client<kondo_srv>::SharedPtr _b3m_client;
         rclcpp::Client<traj_srv>::SharedPtr _traj_client;
         rclcpp::TimerBase::SharedPtr _timer_planner, _timer_hand_unit;
 
@@ -81,7 +81,7 @@ namespace arm_controller{
         MainArmState _requested_state, _feedback_state;
         TrajectoryData _trajectory_data;
         std::vector<TipState> _traj_target_points;
-        bool _traj_enter_common_area_is_enable;
+        bool _traj_enter_common_area_is_enable = false;
         PositionSelector _field_tip_pos, _common_tip_pos, _shooter_tip_pos;
         TimeCounter _time_counter_hand_motion;  // hand motion用
 

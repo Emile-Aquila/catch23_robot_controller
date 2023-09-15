@@ -1,0 +1,5 @@
+uint8 request_type
+
+uint8 REQUEST_WAIT=0
+uint8 REQUEST_START=1
+uint8 REQUEST_FORCE_START=2

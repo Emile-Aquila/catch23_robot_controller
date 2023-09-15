@@ -106,15 +106,11 @@ def generate_launch_description():
                     plugin="kondo_drivers::KondoB3mDriverNode",
                     name="kondo_b3m_driver_component",
                 ),
-                ComposableNode(
-                    package="kondo_drivers",
-                    plugin="kondo_drivers::KondoB3mDriverService",
-                    name="kondo_b3m_service_component",
-                ),
                 # ComposableNode(
-                #     package='catch23_robot_controller',
-                #     plugin='arm_trajectory::ArmTrajectoryService',
-                #     name='traj_service'),
+                #     package="kondo_drivers",
+                #     plugin="kondo_drivers::KondoB3mDriverService",
+                #     name="kondo_b3m_service_component",
+                # ),
                 ComposableNode(
                     package='joy',
                     plugin='joy::Joy',
@@ -132,6 +128,10 @@ def generate_launch_description():
                     package='catch23_robot_controller',
                     plugin='arm_controller::StatePublisherNode',
                     name='state_publisher_component'),
+                ComposableNode(
+                    package='catch23_robot_controller',
+                    plugin='arm_controller::OneGrabHandNode',
+                    name='grab_hand_component'),
             ],
             output='both',
             emulate_tty=True

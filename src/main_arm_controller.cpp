@@ -232,16 +232,16 @@ namespace arm_controller{
         _pub_micro_ros_theta = this->create_publisher<std_msgs::msg::Float32>("mros_input_theta", 5);
 
         _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
-        _b3m_client = this->create_client<kondo_srv>("b3m_service");
+//        _b3m_client = this->create_client<kondo_srv>("b3m_service");
         _traj_client = this->create_client<traj_srv>("arm_trajectory_service");
 
-        while(!_b3m_client->wait_for_service(1s)){
-            if(!rclcpp::ok()){
-                RCLCPP_ERROR(this->get_logger(), "Client interrupted while waiting for service");
-                return;
-            }
-            RCLCPP_WARN(this->get_logger(), "waiting for b3m service...");
-        }
+//        while(!_b3m_client->wait_for_service(1s)){
+//            if(!rclcpp::ok()){
+//                RCLCPP_ERROR(this->get_logger(), "Client interrupted while waiting for service");
+//                return;
+//            }
+//            RCLCPP_WARN(this->get_logger(), "waiting for b3m service...");
+//        }
         while(!_traj_client->wait_for_service(1s)){
             if(!rclcpp::ok()){
                 RCLCPP_ERROR(this->get_logger(), "Client interrupted while waiting for service");
@@ -250,12 +250,11 @@ namespace arm_controller{
             RCLCPP_WARN(this->get_logger(), "waiting for arm_trajectory_service...");
         }
 
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(300ms);
         _b3m_init(wrist_servo_id);  // init b3m
-        rclcpp::sleep_for(100ms);
+        rclcpp::sleep_for(300ms);
         _b3m_init(hand_interval_id);  // init b3m
-        rclcpp::sleep_for(100ms);
-//        _b3m_init(ikko_servo_id);  // init b3m
+        rclcpp::sleep_for(300ms);
 
         _timer_planner = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_trajectory_timer_callback, this));
         _timer_hand_unit = this->create_wall_timer(100ms, std::bind(&ArmControllerNode::_hand_unit_timer_callback, this));
