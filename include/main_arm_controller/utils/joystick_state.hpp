@@ -24,6 +24,7 @@ public:
     bool get_button_1_indexed(int id, bool strictly_changed=false);
     std::pair<float, float> get_joystick_left_xy();
     std::pair<float, float> get_joystick_right_xy();
+    bool detect_input();  // 十字キーとかの入力があるか否か。
 };
 
 

@@ -14,7 +14,7 @@ JoyStickState::JoyStickState(const sensor_msgs::msg::Joy &joy_msg){
 
 bool JoyStickState::get_button_1_indexed(int id, bool strictly_changed) {
     // buttonは0-indexになってる
-    if(id < 1 || id >= (int)_button_inputs.size())return false;
+    if(id < 1 || id > (int)_button_inputs.size())return false;
     if(strictly_changed){  // buttonが押されてない状態から押した状態に変化した時にtrueを返す
         return ((_button_inputs_pre[id-1] == 0) && (_button_inputs[id-1] == 1));
     }else {
@@ -45,6 +45,12 @@ void JoyStickState::set(const sensor_msgs::msg::Joy &joy_msg) {
         _button_inputs_pre = _button_inputs;
     }
     _button_inputs = joy_msg.buttons;
+}
+
+bool JoyStickState::detect_input() {
+    auto [a, b] = this->get_joystick_right_xy();
+    auto [c, d] = this->get_joystick_left_xy();
+    return !(a == 0.0 && b == 0.0 && c == 0.0 && d == 0.0);
 }
 
 

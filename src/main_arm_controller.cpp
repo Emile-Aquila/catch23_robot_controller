@@ -37,6 +37,12 @@ ArmState clip_arm_state(const ArmState& arm_state) {
 }
 
 
+bool is_same_without_phi(const ArmState& arm_state1, const ArmState& arm_state2){
+    // r, theta, zが同じならtrue
+    return (arm_state1.r == arm_state2.r && arm_state1.theta == arm_state2.theta && arm_state1.z == arm_state2.z);
+}
+
+
 
 namespace arm_controller{
     ArmControllerNode::ArmControllerNode(const rclcpp::NodeOptions & options)
@@ -77,17 +83,19 @@ namespace arm_controller{
 
 
             if(this->_controller_state == ControllerState::CTRL_HUMAN && this->_planner_state == PlannerState::PLANNER_WAITING) {
-                // CTRL_HUMANの動作
+                // スティック入力時の動作
                 TipState next_tip_state = this->_requested_state.tip_state() + TipState(d_x * 15.0f, d_y * 15.0f, d_z * 4.5f, d_theta * 2.0f * M_PI / 180.0f);
                 ArmState next_arm_state = arm_ik(next_tip_state);
-                if (next_arm_state == clip_arm_state(next_arm_state) && (abs(next_arm_state.theta- this->_requested_state.arm_state().theta) <= M_PI)) {
-                    if (d_x != 0.0 || d_y != 0.0 || d_z != 0.0 || d_theta != 0.0) {
+
+                if ((is_same_without_phi(next_arm_state, clip_arm_state(next_arm_state)))
+                        && (abs(next_arm_state.theta- this->_requested_state.arm_state().theta) <= M_PI)) {
+                    if (this->joy_state.detect_input()) {
                         this->_change_planner_state(PlannerState::PLANNER_WAITING);
                         RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf",
                                     this->_requested_state.tip_state().x, this->_requested_state.tip_state().y, this->_requested_state.tip_state().z, this->_requested_state.tip_state().theta);
                         RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf",
                                     this->_requested_state.arm_state().r, this->_requested_state.arm_state().theta, this->_requested_state.arm_state().z, this->_requested_state.arm_state().phi);
-                        this->_send_request_arm_state(next_arm_state);
+                        this->_send_request_arm_state(clip_arm_state(next_arm_state));
                     }
                 } else {
                     RCLCPP_WARN(this->get_logger(), "Invalid input!");
@@ -96,6 +104,22 @@ namespace arm_controller{
 
             }else if(this->_controller_state == ControllerState::CTRL_AUTO) {
                 // CTRL_AUTOの動作
+                if(this->joy_state.detect_input() && (this->_planner_state == PlannerState::PLANNER_WAITING)){
+                    // ゆっくり動かす
+                    TipState next_tip_state = this->_requested_state.tip_state() + TipState(d_x * 7.0f, d_y * 7.0f, d_z * 2.0f, d_theta * 1.5f * M_PI / 180.0f);
+                    ArmState next_arm_state = arm_ik(next_tip_state);
+
+                    if(is_same_without_phi(next_arm_state, clip_arm_state(next_arm_state))
+                       && (abs(next_arm_state.theta- this->_requested_state.arm_state().theta) <= M_PI)) {
+                        RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf", this->_requested_state.tip_state().x,
+                                    this->_requested_state.tip_state().y, this->_requested_state.tip_state().z, this->_requested_state.tip_state().theta);
+                        RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf", this->_requested_state.arm_state().r,
+                                    this->_requested_state.arm_state().theta, this->_requested_state.arm_state().z, this->_requested_state.arm_state().phi);
+                        this->_send_request_arm_state(clip_arm_state(next_arm_state));
+                    }
+                }
+
+
                 if(this->joy_state.get_button_1_indexed(5 , true)) {
                     // ワークの位置へ
                     TipStates target_points;
@@ -476,7 +500,8 @@ namespace arm_controller{
                     if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_SHOOTER) {
                         traj_targets = {
                                 tip_state_now,
-                                TipState(tip_state_now.x - 150.0f, tip_state_now.y, tip_state_now.z, tip_state_now.theta)
+                                TipState(tip_state_now.x - 150.0f, tip_state_now.y, tip_state_now.z, tip_state_now.theta),
+                                TipState(tip_state_now.x - 150.0f, 0.0, tip_state_now.z, tip_state_now.theta),
                         };  // TODO: 赤コートの場合の処理
                         this->_request_trajectory_following(traj_targets, false);
                     }
