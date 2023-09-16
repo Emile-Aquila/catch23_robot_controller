@@ -19,7 +19,7 @@
 #include <catch23_robot_controller/msg/one_hand_request.hpp>
 
 
-enum class OneGrabState{
+enum class ShooterState{
     ONE_GRAB_WAIT,  // 待機
     ONE_GRAB_TOWARD,  // 取りに行く
     ONE_GRAB_CATCH,  // 掴む
@@ -43,13 +43,13 @@ namespace arm_controller{
 
         void sub_callback(const catch23_robot_controller::msg::OneHandRequest& msg);
         void timer_callback();
-        void change_grab_state(OneGrabState next_state);
+        void change_grab_state(ShooterState next_state);
         void request_air(bool is_close);
         void _b3m_init(uint8_t servo_id);
 
 
         TimeCounter _time_counter;
-        OneGrabState _grab_state = OneGrabState::ONE_GRAB_WAIT;
+        ShooterState _grab_state = ShooterState::ONE_GRAB_WAIT;
         bool _is_moving = false;  // すでに動作中ならtrue
         int _ikko_servo_id = 0;
 

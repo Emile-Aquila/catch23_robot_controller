@@ -81,6 +81,14 @@ rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_type
 target_link_libraries(one_grab_hand_component "${cpp_typesupport_target}")
 
 
+ament_auto_add_library(shooter_node_component SHARED
+        src/shooter_node.cpp  src/utils/system_classes.cpp src/utils/util_functions.cpp)
+rclcpp_components_register_nodes(shooter_node_component "arm_controller::ShooterNode")
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
+target_link_libraries(shooter_node_component "${cpp_typesupport_target}")
+
+
+
 # package setting
 ament_auto_package(
         INSTALL_TO_SHARE

@@ -15,11 +15,12 @@ using namespace std::placeholders;
 namespace arm_controller {
     OneGrabHandNode::OneGrabHandNode(const rclcpp::NodeOptions &options)
             :Node("one_grab_hand_component", options){
-        _grab_state = OneGrabState::ONE_GRAB_WAIT;
+        _grab_state = ShooterState::ONE_GRAB_WAIT;
 
         auto bind_callback = std::bind(&OneGrabHandNode::sub_callback, this, _1);
         _sub_request = this->create_subscription<OneHandRequest>("one_hand_request", 10, bind_callback);
         _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
+        _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 5);
         _timer = this->create_wall_timer(100ms, std::bind(&OneGrabHandNode::timer_callback, this));
 
         _b3m_init(_ikko_servo_id);  // init b3m
@@ -46,9 +47,9 @@ namespace arm_controller {
         const uint64_t servo_move_time_half = 1500;
         const uint64_t air_move_time = 800;
 
-        if(this->_grab_state == OneGrabState::ONE_GRAB_WAIT || this->_grab_state == OneGrabState::ONE_GRAB_ESCAPE){
+        if(this->_grab_state == ShooterState::ONE_GRAB_WAIT || this->_grab_state == ShooterState::ONE_GRAB_ESCAPE){
             this->_time_counter.disable();
-            if(this->_grab_state == OneGrabState::ONE_GRAB_WAIT)this->_is_moving = false;
+            if(this->_grab_state == ShooterState::ONE_GRAB_WAIT)this->_is_moving = false;
         }else{
             if(!(this->_time_counter.is_enable()))this->_time_counter.enable();  // counter起動
             this->_time_counter.count(100);  // count
@@ -56,38 +57,38 @@ namespace arm_controller {
         }
 
         switch (this->_grab_state) {  // 動作
-            case OneGrabState::ONE_GRAB_WAIT:
+            case ShooterState::ONE_GRAB_WAIT:
                 // no action
                 break;
-            case OneGrabState::ONE_GRAB_TOWARD:
+            case ShooterState::ONE_GRAB_TOWARD:
                 _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_forward, 0));
-                if(this->_time_counter.check_time(servo_move_time_half))change_grab_state(OneGrabState::ONE_GRAB_CATCH);
+                if(this->_time_counter.check_time(servo_move_time_half))change_grab_state(ShooterState::ONE_GRAB_CATCH);
                 break;
-            case OneGrabState::ONE_GRAB_CATCH:
+            case ShooterState::ONE_GRAB_CATCH:
                 _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_forward, 0));
                 request_air(true);
-                if(this->_time_counter.check_time(air_move_time))change_grab_state(OneGrabState::ONE_GRAB_BACK);
+                if(this->_time_counter.check_time(air_move_time))change_grab_state(ShooterState::ONE_GRAB_BACK);
                 break;
-            case OneGrabState::ONE_GRAB_BACK:
+            case ShooterState::ONE_GRAB_BACK:
                 _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_back, 0));
-                if(this->_time_counter.check_time(servo_move_time_half*2))change_grab_state(OneGrabState::ONE_GRAB_RELEASE);
+                if(this->_time_counter.check_time(servo_move_time_half*2))change_grab_state(ShooterState::ONE_GRAB_RELEASE);
                 break;
-            case OneGrabState::ONE_GRAB_RELEASE:
+            case ShooterState::ONE_GRAB_RELEASE:
                 _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_back, 0));
-                if(this->_time_counter.check_time(air_move_time))change_grab_state(OneGrabState::ONE_GRAB_ESCAPE);
+                if(this->_time_counter.check_time(air_move_time))change_grab_state(ShooterState::ONE_GRAB_ESCAPE);
                 request_air(false);
                 break;
-            case OneGrabState::ONE_GRAB_ESCAPE:
+            case ShooterState::ONE_GRAB_ESCAPE:
                 _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, angle_forward, 0));
-                if(this->_time_counter.check_time(servo_move_time_half*2))change_grab_state(OneGrabState::ONE_GRAB_STOP);
+                if(this->_time_counter.check_time(servo_move_time_half*2))change_grab_state(ShooterState::ONE_GRAB_STOP);
                 break;
-            case OneGrabState::ONE_GRAB_STOP:
+            case ShooterState::ONE_GRAB_STOP:
                 // no action
                 break;
         }
     }
 
-    void OneGrabHandNode::change_grab_state(OneGrabState next_state) {
+    void OneGrabHandNode::change_grab_state(ShooterState next_state) {
         if(_grab_state != next_state){
             this->_time_counter.disable();
         }
@@ -102,13 +103,13 @@ namespace arm_controller {
 
     void OneGrabHandNode::sub_callback(const catch23_robot_controller::msg::OneHandRequest &msg) {
         if(msg.request_type == OneHandRequest::REQUEST_WAIT){
-            change_grab_state(OneGrabState::ONE_GRAB_WAIT);
+            change_grab_state(ShooterState::ONE_GRAB_WAIT);
 
         }else if(msg.request_type ==OneHandRequest::REQUEST_START){
-            if(!_is_moving)change_grab_state(OneGrabState::ONE_GRAB_TOWARD);
+            if(!_is_moving)change_grab_state(ShooterState::ONE_GRAB_TOWARD);
 
         }else if(msg.request_type == OneHandRequest::REQUEST_FORCE_START){
-            change_grab_state(OneGrabState::ONE_GRAB_TOWARD);
+            change_grab_state(ShooterState::ONE_GRAB_TOWARD);
         }
     }
 }
