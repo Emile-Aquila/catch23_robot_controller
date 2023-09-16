@@ -91,7 +91,7 @@ public:
     PositionSelector(std::vector<TipStates> tip_states_list);
     int size();
     TipStates next();
-    TipStates prev();
+    void back_prev();
     TipStates get();
     void clear();
     bool complete();

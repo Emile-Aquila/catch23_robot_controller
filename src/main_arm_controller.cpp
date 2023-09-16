@@ -172,13 +172,11 @@ namespace arm_controller{
                 }
 
                 if(this->joy_state.get_button_1_indexed(1, true)){
-                    // TODO: テストコード
                     this->_set_hand_motion(HandMotionType::MOTION_GRAB_OUR_AREA);
                     this->_change_hand_unit_state(HandUnitState::HAND_BEFORE);
                 }
 
                 if(this->joy_state.get_button_1_indexed(2, true)){
-                    // TODO: テストコード
                     this->_set_hand_motion(HandMotionType::MOTION_RELEASE_SHOOTER);
                     this->_change_hand_unit_state(HandUnitState::HAND_BEFORE);
                 }
@@ -187,8 +185,13 @@ namespace arm_controller{
                     RCLCPP_WARN(this->get_logger(), "[AUTO] return to origin!");
                     if(this->_requested_state.tip_state() != this->_tip_state_origin) {
                         TipStates target_points = {this->_requested_state.tip_state(), this->_tip_state_origin};
-                        this->_request_trajectory_following(target_points, false);
+                        this->_hand_interval_open_close(true, false);
+                        this->_request_trajectory_following(target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
                     }
+                }
+
+                if(this->joy_state.get_button_1_indexed(4, true)){
+
                 }
             }
 
@@ -483,10 +486,10 @@ namespace arm_controller{
 
                 }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_NORMAL){
                     _request_hand_open_close(true);  // close
-                    tip_state_now.z = 187.7f;  // TODO: 未定
+                    tip_state_now.z = 157.7f;
                 }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_SHOOTER){
                     _request_hand_open_close(true);  // close
-                    tip_state_now.z = 57.0f;
+                    tip_state_now.z = 157.0f;
                 }
 
                 this->_send_request_arm_state(arm_ik(tip_state_now));
@@ -518,12 +521,12 @@ namespace arm_controller{
                 if((this->_feedback_state.tip_state().z - tip_state_now.z) < 5.0){  // 誤差が5mm以下
                     this->_change_hand_unit_state(HandUnitState::HAND_WAIT);
                     if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_SHOOTER) {
-                        traj_targets = {
-                                tip_state_now,
-                                TipState(tip_state_now.x - 150.0f, tip_state_now.y, tip_state_now.z, tip_state_now.theta),
-                                TipState(tip_state_now.x - 150.0f, 0.0, tip_state_now.z, tip_state_now.theta),
-                        };  // TODO: 赤コートの場合の処理
-                        this->_request_trajectory_following(traj_targets, false);
+//                        traj_targets = {
+//                                tip_state_now,
+//                                TipState(tip_state_now.x - 150.0f, tip_state_now.y, tip_state_now.z, tip_state_now.theta),
+//                                TipState(tip_state_now.x - 150.0f, 0.0, tip_state_now.z, tip_state_now.theta),
+//                        };  // TODO: 赤コートの場合の処理
+//                        this->_request_trajectory_following(traj_targets, false);
                     }
                 }  // feedbackによる遷移処理
                 break;
