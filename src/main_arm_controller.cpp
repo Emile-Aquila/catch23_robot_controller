@@ -128,15 +128,17 @@ namespace arm_controller{
                     // ワークの位置へ
                     TipStates target_points;
                     bool is_completed = false;
+                    TipState fixed_now_state = this->_requested_state.tip_state();  // zを上げた状態にした現在地
+                    fixed_now_state.z = 0.0;
                     if((this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE) && (!this->_common_tip_pos.complete())){
                         target_points = this->_common_tip_pos.next();
-                        target_points.insert(target_points.begin(), this->_requested_state.tip_state());
+                        target_points.insert(target_points.begin(), fixed_now_state);
                     }else{
                         if(this->_field_tip_pos.complete()){
                             is_completed = true;
                         }else {
                             target_points = this->_field_tip_pos.next();
-                            target_points.insert(target_points.begin(), this->_requested_state.tip_state());
+                            target_points.insert(target_points.begin(), fixed_now_state);
                         }
                     }
                     if(!is_completed) {
@@ -151,11 +153,14 @@ namespace arm_controller{
                     // シューティングボックスへ
                     TipStates target_points;
                     bool is_completed = false;
+                    TipState fixed_now_state = this->_requested_state.tip_state();  // zを上げた状態にした現在地
+                    fixed_now_state.z = 0.0;
+
                     if(this->_shooter_tip_pos.complete()){
                         is_completed = true;
                     }else {
                         target_points = this->_shooter_tip_pos.next();
-                        target_points.insert(target_points.begin(), this->_requested_state.tip_state());
+                        target_points.insert(target_points.begin(), fixed_now_state);
                     }
                     if(!is_completed){
                         bool is_common = this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE;
@@ -165,7 +170,7 @@ namespace arm_controller{
                         TipState tgt_pos_pre(508.0, 140.0, 0.0, 0.0);
                         TipState tgt_pos(508.0, -300.0, 0.0, 0.0);
 
-                        TipStates target_points = {this->_requested_state.tip_state(), tgt_pos_pre, tgt_pos};
+                        TipStates target_points = {fixed_now_state, tgt_pos_pre, tgt_pos};
                         this->_request_trajectory_following(target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
                         RCLCPP_WARN(this->get_logger(), "****[WARN]**** shooter_tip_pos is completed.");
                     }
@@ -301,6 +306,7 @@ namespace arm_controller{
                             && this->_traj_target_points[i-1].y == this->_traj_target_points[i].y
                             && this->_traj_target_points[i-1].theta == this->_traj_target_points[i].theta){
                         // 同じ点が入っている場合は除去
+                        // TODO: thetaだけ違う場合
                         RCLCPP_WARN(this->get_logger(), "****[WARN]**** Duplicated Points");
                         continue;
                     }
