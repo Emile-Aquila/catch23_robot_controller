@@ -202,7 +202,7 @@ namespace arm_controller{
             // 一個取り
             if (this->joy_state.get_button_1_indexed(11, true)) {
                 RCLCPP_INFO(this->get_logger(), "[INFO] ikkodori hand!");
-                // 66.5f -> 0.0f -> -66.5f  // TODO: 実装
+                this->_request_one_grab_start();
             }
 
             // 妨害機構
@@ -522,6 +522,12 @@ namespace arm_controller{
         double target_pos = rad_to_deg(16.0/3.0 + M_PI_4) / 2.0;
         if(hand_close)target_pos = -target_pos;
         _pub_b3m->publish(gen_b3m_set_pos_msg(hand_interval_id, target_pos, 0));
+    }
+
+    void ArmControllerNode::_request_one_grab_start() {
+        one_grab_msg msg;
+        msg.request_type = one_grab_msg::REQUEST_START;
+        _pub_grab->publish(msg);
     }
 }
 

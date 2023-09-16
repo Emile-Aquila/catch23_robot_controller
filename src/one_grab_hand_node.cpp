@@ -92,6 +92,9 @@ namespace arm_controller {
         if(_grab_state != next_state){
             this->_time_counter.disable();
         }
+        if(next_state == ShooterState::ONE_GRAB_ESCAPE){
+            RCLCPP_INFO(this->get_logger(), "[INFO] end one grab hand motion");
+        }
         _grab_state = next_state;
     }
 
@@ -106,8 +109,10 @@ namespace arm_controller {
             change_grab_state(ShooterState::ONE_GRAB_WAIT);
 
         }else if(msg.request_type ==OneHandRequest::REQUEST_START){
-            if(!_is_moving)change_grab_state(ShooterState::ONE_GRAB_TOWARD);
-
+            if(!_is_moving){
+                change_grab_state(ShooterState::ONE_GRAB_TOWARD);
+                RCLCPP_INFO(this->get_logger(), "[INFO] start one grab hand!");
+            }
         }else if(msg.request_type == OneHandRequest::REQUEST_FORCE_START){
             change_grab_state(ShooterState::ONE_GRAB_TOWARD);
         }

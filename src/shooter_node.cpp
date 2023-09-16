@@ -152,6 +152,32 @@ namespace arm_controller {
     }
 
     void ShooterNode::change_shooter_state(ShooterState next_state) {
+        switch (_shooter_state_now) {
+            case ShooterState::POS_0:
+                RCLCPP_INFO(get_logger(), "[INFO] ShooterNode, POS_0");
+                break;
+            case ShooterState::POS1_UP:
+                RCLCPP_INFO(get_logger(), "[INFO] ShooterNode, POS1 UP");
+                break;
+            case ShooterState::POS1_DOWN:
+                RCLCPP_INFO(get_logger(), "[INFO] ShooterNode, POS1 DOWN");
+                break;
+            case ShooterState::POS2_UP:
+                RCLCPP_INFO(get_logger(), "[INFO] ShooterNode, POS2 UP");
+                break;
+            case ShooterState::POS2_DOWN:
+                RCLCPP_INFO(get_logger(), "[INFO] ShooterNode, POS2 DOWN");
+                break;
+            case ShooterState::POS3_UP:
+                RCLCPP_INFO(get_logger(), "[INFO] ShooterNode, POS3 UP");
+                break;
+            case ShooterState::POS3_DOWN:
+                RCLCPP_INFO(get_logger(), "[INFO] ShooterNode, POS3 DOWN");
+                break;
+            case ShooterState::IS_MOVING:
+                RCLCPP_INFO(get_logger(), "[INFO] ShooterNode, IS MOVING");
+                break;
+        }
         _shooter_state_pre = _shooter_state_now;
         _shooter_state_now = next_state;
     }
