@@ -80,7 +80,7 @@ class ValidityCheckerRobotAreaCommon : public ob::StateValidityChecker{  // stat
     double max_field_x = 1800.0 / 2.0 ;
     double max_field_y_up = 830.0 + 150.0 - 50.0;
     double min_field_y_lw = -1045.0 ;
-    double max_shooter_x = (1560 + 200.0) / 2.0;
+    double max_shooter_x = (1560) / 2.0;
 
     double _clearance_field_area(const XY& vertex) const;
 public:

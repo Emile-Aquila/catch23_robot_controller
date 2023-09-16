@@ -44,7 +44,7 @@ namespace arm_controller {
     void OneGrabHandNode::timer_callback() {
         const float angle_forward = 66.5; // (deg)
         const float angle_back = -66.5; // (deg)
-        const uint64_t servo_move_time_half = 1500;
+        const uint64_t servo_move_time_half = 1000;
         const uint64_t air_move_time = 800;
 
         if(this->_grab_state == ShooterState::ONE_GRAB_WAIT || this->_grab_state == ShooterState::ONE_GRAB_ESCAPE){

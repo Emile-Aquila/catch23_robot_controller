@@ -55,7 +55,9 @@ namespace arm_controller{
         void _request_hand_open_close(bool hand_close);
         void _hand_unit_timer_callback();
         void _hand_interval_open_close(bool hand_close);
-        void _request_one_grab_start();
+        void _request_one_grab_start(bool force);
+        void _request_shooter_state(uint8_t shooter_state);
+        shooter_msg _shooter_next_state();
 
         // change state
         bool _change_controller_state(ControllerState next_state);

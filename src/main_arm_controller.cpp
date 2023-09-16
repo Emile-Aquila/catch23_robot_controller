@@ -11,6 +11,7 @@
 #include "main_arm_controller/main_arm_controller.hpp"
 #include <main_arm_controller/utils/util_functions.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
+#include <catch23_robot_controller/msg/shooter_state.hpp>
 #include <kondo_drivers/msg/b3m_servo_msg.hpp>
 #include <actuator_msgs/msg/actuator_msg.hpp>
 #include <actuator_msgs/msg/device_info.hpp>
@@ -88,15 +89,17 @@ namespace arm_controller{
                 TipState next_tip_state = this->_requested_state.tip_state() + TipState(d_x * 15.0f, d_y * 15.0f, d_z * 4.5f, d_theta * 2.0f * M_PI / 180.0f);
                 ArmState next_arm_state = arm_ik(next_tip_state);
 
-                if ((is_same_without_phi(next_arm_state, clip_arm_state(next_arm_state)))
+//                if ((is_same_without_phi(next_arm_state, clip_arm_state(next_arm_state)))
+                if (next_arm_state == clip_arm_state(next_arm_state)
                         && (abs(next_arm_state.theta- this->_requested_state.arm_state().theta) <= M_PI)) {
                     if (this->joy_state.detect_input()) {
-                        this->_change_planner_state(PlannerState::PLANNER_WAITING);
+//                        this->_change_planner_state(PlannerState::PLANNER_WAITING);
+                        this->_send_request_arm_state(next_arm_state);
                         RCLCPP_INFO(this->get_logger(), "x,y,z,theta: %.2lf, %.2lf, %.2lf, %.3lf",
                                     this->_requested_state.tip_state().x, this->_requested_state.tip_state().y, this->_requested_state.tip_state().z, this->_requested_state.tip_state().theta);
                         RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf",
                                     this->_requested_state.arm_state().r, this->_requested_state.arm_state().theta, this->_requested_state.arm_state().z, this->_requested_state.arm_state().phi);
-                        this->_send_request_arm_state(clip_arm_state(next_arm_state));
+//                        auto tmp = clip_arm_state(next_arm_state);
                     }
                 } else {
                     RCLCPP_WARN(this->get_logger(), "Invalid input!");
@@ -158,6 +161,11 @@ namespace arm_controller{
                         this->_hand_interval_open_close(true);  // close
                         this->_request_trajectory_following(target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
                     }else{ // _shooter_tip_posが空
+                        TipState tgt_pos_pre(508.0, 140.0, 0.0, 0.0);
+                        TipState tgt_pos(508.0, -300.0, 0.0, 0.0);
+
+                        TipStates target_points = {this->_requested_state.tip_state(), tgt_pos_pre, tgt_pos};
+                        this->_request_trajectory_following(target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
                         RCLCPP_WARN(this->get_logger(), "****[WARN]**** shooter_tip_pos is completed.");
                     }
                 }
@@ -202,7 +210,7 @@ namespace arm_controller{
             // 一個取り
             if (this->joy_state.get_button_1_indexed(11, true)) {
                 RCLCPP_INFO(this->get_logger(), "[INFO] ikkodori hand!");
-                this->_request_one_grab_start();
+                this->_request_one_grab_start(false);
             }
 
             // 妨害機構
@@ -219,6 +227,11 @@ namespace arm_controller{
                         break;
                 }
             }
+
+            if (this->joy_state.get_button_1_indexed(4, true)){
+                shooter_msg msg = _shooter_next_state();
+                _request_shooter_state(msg.state);
+            }
         };
 
 
@@ -231,14 +244,14 @@ namespace arm_controller{
         };
 
         joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 10, joy_callback_xy);
-        sub_shooter_state = this->create_subscription<shooter_msg>("shooter_state", 10, shooter_callback);
+//        sub_shooter_state = this->create_subscription<shooter_msg>("shooter_state", 10, shooter_callback);
         sub_tip_fb = this->create_subscription<catch23_robot_controller::msg::TipState>("tip_state", 10, tip_fb_callback);
         _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 5);
         _pub_micro_ros_r = this->create_publisher<std_msgs::msg::Float32>("mros_input_r", 5);
         _pub_micro_ros_theta = this->create_publisher<std_msgs::msg::Float32>("mros_input_theta", 5);
 
-        _pub_shooter = this->create_publisher<shooter_msg>("shooter_request", 10);
-        _pub_grab = this->create_publisher<one_grab_msg>("one_hand_request", 10);
+//        _pub_shooter = this->create_publisher<shooter_msg>("shooter_request", 10);
+//        _pub_grab = this->create_publisher<one_grab_msg>("one_hand_request", 10);
         _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
 //        _b3m_client = this->create_client<kondo_srv>("b3m_service");
         _traj_client = this->create_client<traj_srv>("arm_trajectory_service");
@@ -292,7 +305,7 @@ namespace arm_controller{
             }
 
             request->step_min = 5.0f;
-            request->step_max = 130.0f;
+            request->step_max = 150.0f;
             request->d_step_max = 10.0f;
             request->is_common = this->_traj_enter_common_area_is_enable;
 
@@ -398,10 +411,9 @@ namespace arm_controller{
             RCLCPP_WARN(get_logger(), "[INFO] COMMON AREA Enable");
             const float target_angle = 85.0f;
             _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 3, 0, target_angle));
-            // TODO: 妨害の動作実装
         }else{
             RCLCPP_WARN(get_logger(), "[INFO] COMMON AREA Disable");
-            const float target_angle = 85.0f;
+            const float target_angle = 0.0f;
             _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_C620, 3, 0, target_angle));
         }
         this->_common_area_state = next_state;
@@ -487,10 +499,10 @@ namespace arm_controller{
                 this->_time_counter_hand_motion.count(100);
 
                 if(this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_SHOOTER ||
-                        this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_NORMAL){
+                        this->_hand_unit_motion_type == HandMotionType::MOTION_RELEASE_NORMAL){  // release
                     _request_hand_open_close(false);  // open
                 }else if(this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_OUR_AREA ||
-                        this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_COMMON){
+                        this->_hand_unit_motion_type == HandMotionType::MOTION_GRAB_COMMON){  // pick up
                     _request_hand_open_close(true);  // close
                 }
                 if(this->_time_counter_hand_motion.check_time(1000)){  // 1s待つ
@@ -524,10 +536,49 @@ namespace arm_controller{
         _pub_b3m->publish(gen_b3m_set_pos_msg(hand_interval_id, target_pos, 0));
     }
 
-    void ArmControllerNode::_request_one_grab_start() {
+    void ArmControllerNode::_request_one_grab_start(bool force) {
         one_grab_msg msg;
         msg.request_type = one_grab_msg::REQUEST_START;
+        if(force)msg.request_type = one_grab_msg::REQUEST_FORCE_START;
         _pub_grab->publish(msg);
+    }
+
+    void ArmControllerNode::_request_shooter_state(uint8_t shooter_state) {
+        shooter_msg msg;
+        msg.state = shooter_state;
+        _pub_shooter->publish(msg);
+    }
+
+    ArmControllerNode::shooter_msg ArmControllerNode::_shooter_next_state() {
+        shooter_msg ans;
+        switch (this->_shooter_state.state) {
+            case shooter_msg::SHOOTER_MOVING:
+                ans.state = shooter_msg::SHOOTER_MOVING;
+                break;
+            case shooter_msg::SHOOTER_POS0:
+                ans.state = shooter_msg::SHOOTER_POS1_UP;
+                break;
+            case shooter_msg::SHOOTER_POS1_UP:
+                ans.state = shooter_msg::SHOOTER_POS1_DOWN;
+                break;
+            case shooter_msg::SHOOTER_POS1_DOWN:
+                ans.state = shooter_msg::SHOOTER_POS2_UP;
+
+                break;
+            case shooter_msg::SHOOTER_POS2_UP:
+                ans.state = shooter_msg::SHOOTER_POS2_DOWN;
+                break;
+            case shooter_msg::SHOOTER_POS2_DOWN:
+                ans.state = shooter_msg::SHOOTER_POS3_UP;
+                break;
+            case shooter_msg::SHOOTER_POS3_UP:
+                ans.state = shooter_msg::SHOOTER_POS3_DOWN;
+                break;
+            case shooter_msg::SHOOTER_POS3_DOWN:
+                ans.state = shooter_msg::SHOOTER_POS0;
+                break;
+        }
+        return ans;
     }
 }
 
