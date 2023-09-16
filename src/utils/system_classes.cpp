@@ -208,15 +208,30 @@ PositionSelector get_position_selector_targets(bool is_red){
 
 PositionSelector get_position_selector_common(bool is_red) {
     double y = 842.5;
-    TipState common1(420.0, y, 0.0, deg_to_rad(90.0));
-    TipState common2(0, y, 0.0, deg_to_rad(90.0));
-    TipState common3(-420.0, y, 0.0, deg_to_rad(90.0));
+    TipState common1(420.0, y, 0.0, deg_to_rad(-90.0));
+    TipState common2(0, y, 0.0, deg_to_rad(-90.0));
+    TipState common3(-420.0, y, 0.0, deg_to_rad(-90.0));
 
     std::vector<TipStates> vectors = {
             {common1},
             {common2},
             {common3},
     };
+//    for(int i=0; i<ys.size(); i++){
+//        double y = ys[i], theta = thetas[i];
+//        TipStates vec = {
+//                TipState(x_prepare, 0.0, 0.0, deg_to_rad(theta)),
+//                TipState(x_prepare, y, 0.0, deg_to_rad(theta)),
+//                TipState(x_release, y, 0.0, deg_to_rad(theta)),
+//        }, vec2 = {
+//                TipState(x_prepare, 0.0, 0.0, deg_to_rad(theta)),
+//                TipState(x_prepare, y - 30.0, 0.0, deg_to_rad(theta)),
+//                TipState(x_release, y - 30.0, 0.0, deg_to_rad(theta)),
+//        };
+//        vectors.emplace_back(vec);
+//        vectors.emplace_back(vec2);
+//    }
+
     if(is_red) {
         for (auto &vec: vectors) {
             for (auto &tmp: vec) {

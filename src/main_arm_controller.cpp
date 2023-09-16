@@ -156,7 +156,7 @@ namespace arm_controller{
                     }
                     if(!is_completed){
                         this->_hand_interval_open_close(true);  // close
-                        this->_request_trajectory_following(target_points, false);  // こっちはfalseの方が良いかも?
+                        this->_request_trajectory_following(target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
                     }else{ // _shooter_tip_posが空
                         RCLCPP_WARN(this->get_logger(), "****[WARN]**** shooter_tip_pos is completed.");
                     }
