@@ -51,6 +51,7 @@ namespace arm_controller{
         uint8_t wrist_servo_id = 1;  // TODO: rosparam化
         uint8_t hand_interval_id = 3;
         _requested_state = MainArmState(_tip_state_origin, false);  // 初期位置
+        _shooter_state.state = shooter_msg::SHOOTER_POS0;
 
         _field_tip_pos = PositionSelector(get_position_selector_targets(false));  // TODO: 実装
         _common_tip_pos = PositionSelector(get_position_selector_common(false));
@@ -225,12 +226,19 @@ namespace arm_controller{
             this->_feedback_state.set_state(convert_tip_state(msg));
         };
 
+        auto shooter_callback = [this](const catch23_robot_controller::msg::ShooterState& msg) -> void {
+            this->_shooter_state.state = msg.state;
+        };
+
         joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy> ("joy", 10, joy_callback_xy);
+        sub_shooter_state = this->create_subscription<shooter_msg>("shooter_state", 10, shooter_callback);
         sub_tip_fb = this->create_subscription<catch23_robot_controller::msg::TipState>("tip_state", 10, tip_fb_callback);
         _pub_micro_ros = this->create_publisher<actuator_msg>("mros_input", 5);
         _pub_micro_ros_r = this->create_publisher<std_msgs::msg::Float32>("mros_input_r", 5);
         _pub_micro_ros_theta = this->create_publisher<std_msgs::msg::Float32>("mros_input_theta", 5);
 
+        _pub_shooter = this->create_publisher<shooter_msg>("shooter_request", 10);
+        _pub_grab = this->create_publisher<one_grab_msg>("one_hand_request", 10);
         _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
 //        _b3m_client = this->create_client<kondo_srv>("b3m_service");
         _traj_client = this->create_client<traj_srv>("arm_trajectory_service");

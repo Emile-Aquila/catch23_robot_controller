@@ -111,7 +111,7 @@ namespace arm_controller {
         _timer_pub_state = this->create_wall_timer(50ms, std::bind(&ShooterNode::timer_callback_send_state, this));
 
         auto bind_callback = std::bind(&ShooterNode::sub_callback, this, _1);
-        _sub_request = this->create_subscription<shooter_msg>("request_shooter_state", 10, bind_callback);
+        _sub_request = this->create_subscription<shooter_msg>("shooter_request", 10, bind_callback);
         auto bind_callback2 = std::bind(&ShooterNode::sub_callback_feedback, this, _1);
         _sub_feedback = this->create_subscription<actuator_fb_msg>("mros_output_mcmd", 10, bind_callback2);
 

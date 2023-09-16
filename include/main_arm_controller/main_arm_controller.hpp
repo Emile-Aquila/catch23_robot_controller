@@ -25,6 +25,8 @@
 #include <rclcpp/client.hpp>
 #include <rclcpp/logger.hpp>
 #include <main_arm_controller/utils/system_classes.hpp>
+#include <catch23_robot_controller/msg/one_hand_request.hpp>
+#include <catch23_robot_controller/msg/shooter_state.hpp>
 
 
 namespace arm_controller{
@@ -38,6 +40,9 @@ namespace arm_controller{
         using kondo_srv = kondo_drivers::srv::KondoB3mSrv;
         using actuator_msg = actuator_msgs::msg::ActuatorMsg;
         using traj_srv = catch23_robot_controller::srv::ArmTrajectorySrv;
+
+        using shooter_msg = catch23_robot_controller::msg::ShooterState;
+        using one_grab_msg = catch23_robot_controller::msg::OneHandRequest;
 
         // trajectory
         bool _request_trajectory_following(std::vector<TipState>& traj_target_points, bool is_common);  // 問題なく移行出来た場合にはtrueを返す
@@ -61,9 +66,12 @@ namespace arm_controller{
         // ROS
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::Subscription<catch23_robot_controller::msg::TipState>::SharedPtr sub_tip_fb;
+        rclcpp::Subscription<shooter_msg>::SharedPtr sub_shooter_state;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr _pub_micro_ros_r, _pub_micro_ros_theta;
         rclcpp::Publisher<kondo_msg>::SharedPtr _pub_b3m;
+        rclcpp::Publisher<shooter_msg>::SharedPtr _pub_shooter;
+        rclcpp::Publisher<one_grab_msg>::SharedPtr _pub_grab;
 //        rclcpp::Client<kondo_srv>::SharedPtr _b3m_client;
         rclcpp::Client<traj_srv>::SharedPtr _traj_client;
         rclcpp::TimerBase::SharedPtr _timer_planner, _timer_hand_unit;
@@ -74,6 +82,7 @@ namespace arm_controller{
         CommonAreaState _common_area_state = CommonAreaState::COMMON_AREA_DISABLE;  // 共通エリアの状態と妨害の状態を共通化してる
         HandUnitState _hand_unit_state = HandUnitState::HAND_WAIT;
         HandMotionType _hand_unit_motion_type = HandMotionType::MOTION_NULL;
+        shooter_msg _shooter_state;
         JoyStickState joy_state;
         bool _is_color_red = false;
 
