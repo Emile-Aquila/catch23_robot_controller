@@ -161,11 +161,6 @@ bool ValidityCheckerRobotArea::isValid(const ob::State* state) const {
 // 共通エリア有りの方
 ValidityCheckerRobotAreaCommon::ValidityCheckerRobotAreaCommon(const ob::SpaceInformationPtr& space_info_): ob::StateValidityChecker(space_info_){
     space_info = space_info_;
-    std::cout << "max y" << max_field_y_up << std::endl;
-    XY XY_test = {615.0, 900.5}; // TODO: テスト
-    XY XY_test2 = {225.0, 784.5}; // TODO: テスト
-    std::cout << "clear test: " << _clearance_field_area(XY_test) << std::endl;
-    std::cout << "clear test: " << _clearance_field_area(XY_test2) << std::endl;
 }
 
 double ValidityCheckerRobotAreaCommon::_clearance_field_area(const XY& vertex) const {
@@ -179,10 +174,6 @@ double ValidityCheckerRobotAreaCommon::clearance(const ob::State* state) const {
     // 与えられた状態の位置から円形の障害物の境界までの距離を返す。
     auto [x, y, yaw] = FK(state);
     std::vector<XY> vertexes = rectangle_vertexes(hand_w, hand_h, x, y, yaw);
-    for(auto v: vertexes){
-        auto [xx, yy] = v;
-//        std::cout << "x,y --> " << xx << ", " << yy << std::endl;  // TODO: テスト
-    }
     double min_clearance = std::numeric_limits<double>::max();
     for (const auto &tmp: vertexes) {
         chmin(min_clearance, _clearance_field_area(tmp));
@@ -311,13 +302,6 @@ OMPL_PlannerClass::OMPL_PlannerClass() {
     _space_info_common->setStateValidityChecker(std::make_shared<ValidityCheckerRobotAreaCommon>(_space_info_common));
     _space_info_common->setup();
     _space_info_common->printSettings(std::cout);
-
-    // TODO: テスト
-    auto tmp_vs = rectangle_vertexes(116.0, 390.0, 420.0, 842.5, -M_PI_2);
-    for(auto& v: tmp_vs){
-        auto [x,y] = v;
-        std::cout << "x,y -> " << x <<", " << y << std::endl;
-    }
 }
 
 std::pair<std::vector<ArmState>, bool> OMPL_PlannerClass::plan(const TipState &start_tip, const TipState &goal_tip, double l_min, double l_max, double d_max, bool is_common) {
