@@ -210,7 +210,7 @@ TipPathObjective::TipPathObjective(const ob::SpaceInformationPtr& space_info)
 ob::Cost TipPathObjective::motionCost(const ob::State* s1, const ob::State* s2) const {
     auto [x1, y1, yaw1] = FK(s1);
     auto [x2, y2, yaw2] = FK(s2);
-    return ob::Cost(sqrt(pow(x2 - x1 / 1000, 2.0) + pow(y2 - y1 / 1000, 2.0)));
+    return ob::Cost(sqrt(pow((x2 - x1) / 1000, 2.0) + pow((y2 - y1) / 1000, 2.0)) + abs(yaw1 - yaw2));
 }
 
 
@@ -243,7 +243,7 @@ ob::OptimizationObjectivePtr getBalancedObjective1(const ob::SpaceInformationPtr
     };
     opt->setCostToGoHeuristic(h_func);
     opt->addObjective(paramlengthObj, 1.0);
-//    opt->addObjective(trajObj, 5.0);
+    opt->addObjective(trajObj, 0.5);
 //    opt->addObjective(clearObj, 0.05);
 
     return ob::OptimizationObjectivePtr(opt);

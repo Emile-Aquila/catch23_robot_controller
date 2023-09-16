@@ -110,8 +110,8 @@ public:
 
 class ParamLengthObjective : public ob::StateCostIntegralObjective{
 private:
-//    double d_theta = 0.05;
-    double d_theta = 0.08;
+//    double d_theta = 0.08;
+    double d_theta = 0.2;
     double d_r = 1000.0;
     double d_phi = 0.2;
 
