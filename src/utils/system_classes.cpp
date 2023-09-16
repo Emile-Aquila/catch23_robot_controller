@@ -147,12 +147,12 @@ PositionSelector get_position_selector_shooter(bool is_red){
         double y = ys[i], theta = thetas[i];
         TipStates vec = {
 //                TipState(x_prepare, 140.0, 0.0, deg_to_rad(theta)),
-                TipState(x_prepare, 0.0, 0.0, deg_to_rad(theta)),
+//                TipState(x_prepare, 0.0, 0.0, deg_to_rad(theta)),
                 TipState(x_prepare, y, 0.0, deg_to_rad(theta)),
                 TipState(x_release, y, 0.0, deg_to_rad(theta)),
         }, vec2 = {
 //                TipState(x_prepare, 140.0, 0.0, deg_to_rad(theta)),
-                TipState(x_prepare, 0.0, 0.0, deg_to_rad(theta)),
+//                TipState(x_prepare, 0.0, 0.0, deg_to_rad(theta)),
                 TipState(x_prepare, y - 30.0, 0.0, deg_to_rad(theta)),
                 TipState(x_release, y - 30.0, 0.0, deg_to_rad(theta)),
         };

@@ -54,7 +54,7 @@ namespace arm_controller{
         void _send_request_arm_state(const ArmState& req_arm_state);
         void _request_hand_open_close(bool hand_close);
         void _hand_unit_timer_callback();
-        void _hand_interval_open_close(bool hand_close);
+        void _hand_interval_open_close(bool hand_close, bool is_common);
         void _request_one_grab_start(bool force);
 //        void _request_shooter_state(uint8_t shooter_state);
         shooter_msg _shooter_next_state();
@@ -69,13 +69,10 @@ namespace arm_controller{
         // ROS
         rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
         rclcpp::Subscription<catch23_robot_controller::msg::TipState>::SharedPtr sub_tip_fb;
-//        rclcpp::Subscription<shooter_msg>::SharedPtr sub_shooter_state;
         rclcpp::Publisher<actuator_msg>::SharedPtr _pub_micro_ros;
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr _pub_micro_ros_r, _pub_micro_ros_theta;
         rclcpp::Publisher<kondo_msg>::SharedPtr _pub_b3m;
-//        rclcpp::Publisher<shooter_msg>::SharedPtr _pub_shooter;
         rclcpp::Publisher<one_grab_msg>::SharedPtr _pub_grab;
-//        rclcpp::Client<kondo_srv>::SharedPtr _b3m_client;
         rclcpp::Client<traj_srv>::SharedPtr _traj_client;
         rclcpp::TimerBase::SharedPtr _timer_planner, _timer_hand_unit;
 

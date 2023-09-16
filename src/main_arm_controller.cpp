@@ -89,8 +89,8 @@ namespace arm_controller{
                 TipState next_tip_state = this->_requested_state.tip_state() + TipState(d_x * 15.0f, d_y * 15.0f, d_z * 4.5f, d_theta * 2.0f * M_PI / 180.0f);
                 ArmState next_arm_state = arm_ik(next_tip_state);
 
-//                if ((is_same_without_phi(next_arm_state, clip_arm_state(next_arm_state)))
-                if (next_arm_state == clip_arm_state(next_arm_state)
+                if ((is_same_without_phi(next_arm_state, clip_arm_state(next_arm_state)))
+//                if (next_arm_state == clip_arm_state(next_arm_state)
                         && (abs(next_arm_state.theta- this->_requested_state.arm_state().theta) <= M_PI)) {
                     if (this->joy_state.detect_input()) {
 //                        this->_change_planner_state(PlannerState::PLANNER_WAITING);
@@ -99,7 +99,7 @@ namespace arm_controller{
                                     this->_requested_state.tip_state().x, this->_requested_state.tip_state().y, this->_requested_state.tip_state().z, this->_requested_state.tip_state().theta);
                         RCLCPP_INFO(this->get_logger(), " --> r,theta,z,phi: %.2lf, %.3lf, %.2lf, %.3lf",
                                     this->_requested_state.arm_state().r, this->_requested_state.arm_state().theta, this->_requested_state.arm_state().z, this->_requested_state.arm_state().phi);
-//                        auto tmp = clip_arm_state(next_arm_state);
+                        auto tmp = clip_arm_state(next_arm_state);
                     }
                 } else {
                     RCLCPP_WARN(this->get_logger(), "Invalid input!");
@@ -140,9 +140,9 @@ namespace arm_controller{
                         }
                     }
                     if(!is_completed) {
-                        this->_hand_interval_open_close(false);  // open
-                        this->_request_trajectory_following(
-                                target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
+                        bool is_common = this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE;
+                        this->_hand_interval_open_close(false, is_common);  // open
+                        this->_request_trajectory_following(target_points, is_common);
                     }else{// _field_tip_posが空
                         RCLCPP_WARN(this->get_logger(), "****[WARN]**** field_tip_pos is completed.");
                     }
@@ -158,8 +158,9 @@ namespace arm_controller{
                         target_points.insert(target_points.begin(), this->_requested_state.tip_state());
                     }
                     if(!is_completed){
-                        this->_hand_interval_open_close(true);  // close
-                        this->_request_trajectory_following(target_points, this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE);
+                        bool is_common = this->_common_area_state == CommonAreaState::COMMON_AREA_ENABLE;
+                        this->_hand_interval_open_close(true, is_common);  // close
+                        this->_request_trajectory_following(target_points, is_common);
                     }else{ // _shooter_tip_posが空
                         TipState tgt_pos_pre(508.0, 140.0, 0.0, 0.0);
                         TipState tgt_pos(508.0, -300.0, 0.0, 0.0);
@@ -251,7 +252,7 @@ namespace arm_controller{
         _pub_micro_ros_theta = this->create_publisher<std_msgs::msg::Float32>("mros_input_theta", 5);
 
 //        _pub_shooter = this->create_publisher<shooter_msg>("shooter_request", 10);
-//        _pub_grab = this->create_publisher<one_grab_msg>("one_hand_request", 10);
+        _pub_grab = this->create_publisher<one_grab_msg>("one_hand_request", 10);
         _pub_b3m = this->create_publisher<kondo_msg>("b3m_topic", 10);
 //        _b3m_client = this->create_client<kondo_srv>("b3m_service");
         _traj_client = this->create_client<traj_srv>("arm_trajectory_service");
@@ -529,10 +530,13 @@ namespace arm_controller{
         }
     }
 
-    void ArmControllerNode::_hand_interval_open_close(bool hand_close) {
+    void ArmControllerNode::_hand_interval_open_close(bool hand_close, bool is_common) {
         uint8_t hand_interval_id = 3;
         double target_pos = rad_to_deg(16.0/3.0 + M_PI_4) / 2.0;
-        if(hand_close)target_pos = -target_pos;
+        if(is_common){
+            target_pos -= rad_to_deg(M_PI_4);
+        }
+        if(hand_close)target_pos = -rad_to_deg(16.0/3.0 + M_PI_4) / 2.0;
         _pub_b3m->publish(gen_b3m_set_pos_msg(hand_interval_id, target_pos, 0));
     }
 

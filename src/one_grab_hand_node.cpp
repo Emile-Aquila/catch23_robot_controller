@@ -24,6 +24,7 @@ namespace arm_controller {
         _timer = this->create_wall_timer(100ms, std::bind(&OneGrabHandNode::timer_callback, this));
 
         _b3m_init(_ikko_servo_id);  // init b3m
+        _pub_b3m->publish(gen_b3m_set_pos_msg(_ikko_servo_id, 0.0, 0));
     }
 
     OneGrabHandNode::~OneGrabHandNode(){}
@@ -44,7 +45,7 @@ namespace arm_controller {
     void OneGrabHandNode::timer_callback() {
         const float angle_forward = 66.5; // (deg)
         const float angle_back = -66.5; // (deg)
-        const uint64_t servo_move_time_half = 1000;
+        const uint64_t servo_move_time_half = 600;
         const uint64_t air_move_time = 800;
 
         if(this->_grab_state == ShooterState::ONE_GRAB_WAIT || this->_grab_state == ShooterState::ONE_GRAB_ESCAPE){
