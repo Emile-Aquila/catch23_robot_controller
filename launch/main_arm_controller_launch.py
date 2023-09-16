@@ -150,6 +150,10 @@ def generate_launch_description():
                     package='catch23_robot_controller',
                     plugin='arm_trajectory::ArmTrajectoryService',
                     name='traj_service'),
+                # ComposableNode(
+                #     package='catch23_robot_controller',
+                #     plugin='arm_controller::OneGrabHandNode',
+                #     name='grab_hand_component'),
             ],
             output='both',
             emulate_tty=True

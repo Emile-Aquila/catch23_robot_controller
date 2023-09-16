@@ -230,7 +230,7 @@ namespace arm_controller{
 
             if (this->joy_state.get_button_1_indexed(4, true)){
                 shooter_msg msg = _shooter_next_state();
-                _request_shooter_state(msg.state);
+//                _request_shooter_state(msg.state);
             }
         };
 
@@ -543,11 +543,11 @@ namespace arm_controller{
         _pub_grab->publish(msg);
     }
 
-    void ArmControllerNode::_request_shooter_state(uint8_t shooter_state) {
-        shooter_msg msg;
-        msg.state = shooter_state;
-        _pub_shooter->publish(msg);
-    }
+//    void ArmControllerNode::_request_shooter_state(uint8_t shooter_state) {
+//        shooter_msg msg;
+//        msg.state = shooter_state;
+//        _pub_shooter->publish(msg);
+//    }
 
     ArmControllerNode::shooter_msg ArmControllerNode::_shooter_next_state() {
         shooter_msg ans;
