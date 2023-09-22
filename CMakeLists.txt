@@ -38,10 +38,12 @@ endif()
 ## msg/srv generation
 file(GLOB ${PROJECT_NAME}_msg_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} msg/*)
 file(GLOB ${PROJECT_NAME}_srv_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} srv/*)
+file(GLOB ${PROJECT_NAME}_action_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} action/*)
 rosidl_generate_interfaces(
         ${PROJECT_NAME}
         ${${PROJECT_NAME}_msg_files}
         ${${PROJECT_NAME}_srv_files}
+        ${${PROJECT_NAME}_action_files}
         DEPENDENCIES ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS}
 )
 
@@ -60,6 +62,13 @@ ament_auto_add_library(arm_trajectory_service_component SHARED src/arm_trajector
 rclcpp_components_register_nodes(arm_trajectory_service_component "arm_trajectory::ArmTrajectoryService")
 #rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 target_link_libraries(arm_trajectory_service_component "${cpp_typesupport_target}" ${OMPL_LIBRARIES} ${Boost_LIBRARIES})
+
+
+ament_auto_add_library(arm_trajectory_action_component SHARED src/arm_trajectory_action.cpp
+        src/utils/robot_state.cpp  src/trajectory/spline_utils.cpp src/trajectory/r_theta_optimal_planning.cpp)
+rclcpp_components_register_nodes(arm_trajectory_action_component "arm_trajectory_action::ArmTrajectoryAction")
+#rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
+target_link_libraries(arm_trajectory_action_component "${cpp_typesupport_target}" ${OMPL_LIBRARIES} ${Boost_LIBRARIES})
 
 
 ament_auto_add_library(c620_test SHARED src/c620_test.cpp)
