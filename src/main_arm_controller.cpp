@@ -315,7 +315,7 @@ namespace arm_controller{
             }
 
             request->step_min = 5.0f;
-            request->step_max = 150.0f;
+            request->step_max = 200.0f;
             request->d_step_max = 10.0f;
             request->is_common = this->_traj_enter_common_area_is_enable;
 
@@ -398,9 +398,9 @@ namespace arm_controller{
     }
 
     void ArmControllerNode::_request_hand_open_close(bool hand_close) {
-        _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 1, 0.0f, hand_close));
-        _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 0, 0.0f, hand_close));
-        _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 2, 0.0f, hand_close));
+//        _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 1, 0.0f, !hand_close));
+        _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 0, 0.0f, !hand_close));
+//        _pub_micro_ros->publish(gen_actuator_msg(actuator_msgs::msg::NodeType::NODE_AIR, 0, 2, 0.0f, !hand_close));
     }
 
     bool ArmControllerNode::_request_trajectory_following(std::vector<TipState> &traj_target_points, bool is_common) {

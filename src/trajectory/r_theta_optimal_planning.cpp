@@ -244,7 +244,7 @@ ob::OptimizationObjectivePtr getBalancedObjective1(const ob::SpaceInformationPtr
     opt->setCostToGoHeuristic(h_func);
     opt->addObjective(paramlengthObj, 1.0);
     opt->addObjective(trajObj, 0.8);
-//    opt->addObjective(clearObj, 0.05);
+//    opt->addObjective(trajObj, 2.0);
 
     return ob::OptimizationObjectivePtr(opt);
 }
