@@ -41,7 +41,7 @@ actuator_msgs::msg::ActuatorMsg gen_actuator_msg(uint8_t node_type, uint8_t node
 kondo_drivers::msg::B3mServoMsg gen_b3m_set_pos_msg(uint8_t servo_id, float target_pos, uint16_t move_time) {
     kondo_drivers::msg::B3mServoMsg ans;
     ans.servo_id = servo_id;
-    ans.command_type = kondo_drivers::msg::B3mServoMsg::CMD_SET_POS_B3M;
+    ans.command_type = kondo_drivers::msg::B3mServoMsg::CMD_SET_POS;
     ans.cmd_set_pos.target_pos = target_pos;
     ans.cmd_set_pos.move_time = move_time;
     return ans;
@@ -50,7 +50,7 @@ kondo_drivers::msg::B3mServoMsg gen_b3m_set_pos_msg(uint8_t servo_id, float targ
 kondo_drivers::msg::B3mServoMsg gen_b3m_write_msg(uint8_t servo_id, uint8_t TxData, uint8_t address) {
     kondo_drivers::msg::B3mServoMsg ans;
     ans.servo_id = servo_id;
-    ans.command_type = kondo_drivers::msg::B3mServoMsg::CMD_WRITE_B3M;
+    ans.command_type = kondo_drivers::msg::B3mServoMsg::CMD_WRITE;
     ans.cmd_write.txdata = TxData;
     ans.cmd_write.address = address;
     return ans;
